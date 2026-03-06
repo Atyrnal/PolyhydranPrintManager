@@ -17,6 +17,9 @@
 #include "headers/ltx2aQT.h"
 #include <QCoreApplication>
 
+#ifndef Q_OS_WIN
+#include <QStandardPaths>
+#endif
 
 
 QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
@@ -144,6 +147,7 @@ double QTBackend::parseDuration(const QString &durationString) {
     return totalHours;
 }
 
+#ifdef Q_OS_WIN
 DWORD QTBackend::findProcessId(const QString& exeName) { //Windows shenanigans to find process by exename
     PROCESSENTRY32 entry;
     entry.dwSize = sizeof(PROCESSENTRY32);
@@ -197,6 +201,7 @@ void QTBackend::bringWindowToFront(DWORD pid) {
         qDebug() << "Could not find a visible top-level OrcaSlicer window.";
     }
 }
+#endif
 
 AppState QTBackend::appstate() {
     bool err = false;
@@ -273,10 +278,12 @@ Q_INVOKABLE void QTBackend::helpButtonClicked() {
 
 Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button pressed
     //Locate orcaslicer exe
+    #ifdef Q_OS_WIN
     QString exeName = "orca-slicer.exe";
     QString exePath = "C:/Program Files/OrcaSlicer/orca-slicer.exe";
 
     //Find orcaslicer process
+
     DWORD pid = findProcessId(exeName);
 
     if (pid != 0) { //if process running, bring it to front instead of starting a new oen
@@ -288,6 +295,20 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
     } else {
         qWarning() << "OrcaSlicer installation not found";
     }
+    #else
+    QString exe = QStandardPaths::findExecutable("orca-slicer");
+    if (exe.isEmpty())
+        exe = QStandardPaths::findExecutable("OrcaSlicer");
+    if (exe.isEmpty())
+        exe = "/usr/bin/orca-slicer"; // fallback
+    if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
+        qDebug() << "Launching OrcaSlicer...";
+        QProcess::startDetached(exe);
+    } else {
+        qWarning() << "OrcaSlicer installation not found";
+    }
+    #endif
+
 }
 
 

@@ -8,23 +8,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # link_directories("C:/vcpkg/installed/x64-windows/lib")
 # include_directories("C:/vcpkg/installed/x64-windows/include")
 
+#######
+
+# link_directories("C:/Libs/Curl/lib")
 
 
-link_directories("C:/Libs/Curl/lib")
+# set(CURL_INCLUDE_DIR "C:/Libs/Curl/include")
+# set(CURL_LIBRARY "C:/Libs/Curl/lib/libcurl.a")
 
-
-set(CURL_INCLUDE_DIR "C:/Libs/Curl/include")
-set(CURL_LIBRARY "C:/Libs/Curl/lib/libcurl.a")
-
-set(ZIP_INCLUDE_DIR "C:/msys64/mingw64/include")
-set(ZIP_LIBRARY "C:/msys64/mingw64/lib/libzip.dll.a")
+# set(ZIP_INCLUDE_DIR "C:/msys64/mingw64/include")
+# set(ZIP_LIBRARY "C:/msys64/mingw64/lib/libzip.dll.a")
 
 find_package(Qt6 REQUIRED COMPONENTS Core Quick SerialPort Svg Sql HttpServer Mqtt)
-# find_package(CURL REQUIRED)
-# find_package(ZIP REQUIRED)
+find_package(CURL REQUIRED)
+#find_package(ZIP REQUIRED)
+find_package(libzip REQUIRED)
 
-include_directories("${CURL_INCLUDE_DIR}")
-include_directories("${ZIP_INCLUDE_DIR}")
+# include_directories("${CURL_INCLUDE_DIR}")
+# include_directories("${ZIP_INCLUDE_DIR}")
 
 
 qt_standard_project_setup(REQUIRES 6.8)
@@ -96,11 +97,12 @@ set_target_properties(appPCMakerspace3DPKiosk PROPERTIES
 )
 
 target_link_libraries(appPCMakerspace3DPKiosk
-    PRIVATE Qt6::Quick Qt6::SerialPort Qt6::Svg Qt6::Sql Qt6::HttpServer Qt6::Mqtt libcurl
+    PRIVATE Qt6::Quick Qt6::SerialPort Qt6::Svg Qt6::Sql Qt6::HttpServer Qt6::Mqtt #libcurl
 )
 target_link_libraries(appPCMakerspace3DPKiosk PRIVATE Qt6::Core)
-target_link_libraries(appPCMakerspace3DPKiosk PRIVATE ${CURL_LIBRARY})
-target_link_libraries(appPCMakerspace3DPKiosk PRIVATE ${ZIP_LIBRARY})
+target_link_libraries(appPCMakerspace3DPKiosk PRIVATE CURL::libcurl libzip::zip)
+# target_link_libraries(appPCMakerspace3DPKiosk PRIVATE ${CURL_LIBRARY})
+# target_link_libraries(appPCMakerspace3DPKiosk PRIVATE ${ZIP_LIBRARY})
 
 include(GNUInstallDirs)
 install(TARGETS appPCMakerspace3DPKiosk

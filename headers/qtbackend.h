@@ -80,8 +80,10 @@ protected:
     QFile* loadedPrint = nullptr; //Selected print file
     QMap<QString, QString> loadedPrintInfo; //Print file info
 private:
+    #ifdef Q_OS_WIN
     DWORD findProcessId(const QString &processName);
     void bringWindowToFront(DWORD pid);
+    #endif
     double parseDuration(const QString &durationString);
     AppState appstate();
 

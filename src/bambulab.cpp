@@ -5,7 +5,7 @@
 */
 
 
-#include "headers/BambuLab.h"
+#include "headers/bambulab.h"
 #include <QFileInfo>
 #include <QJsonObject>
 #include <QJsonArray>
