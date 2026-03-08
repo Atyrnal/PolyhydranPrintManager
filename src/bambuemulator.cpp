@@ -27,7 +27,7 @@ void BambuEmulator::startMosquitto() {
     //Start mosquitto instance
     mosquito->start(mosquitoPath, QStringList() << "-c" << configPath << "-v");
     if (!mosquito->waitForStarted(2000)) {
-        Error("BambuEmulatorError", "Failed to start mosquito", El::Critical).handle();
+        Error("BambuEmulatorError", "Failed to start mosquitto", El::Critical).handle();
         return;
     };
 
@@ -56,49 +56,46 @@ void BambuEmulator::startMosquitto() {
 
     QObject::connect(mqtt, &QMqttClient::connected, this, [this](){
         mqtt->subscribe(BambuEmulator::requestFilter);
-        qDebug() << "Connected to Mosquitto";
+        Log::write("BambuEmulator", "Connected to Mosquitto");
     });
 
     QObject::connect(mqtt, &QMqttClient::disconnected, this, [this](){
-        qDebug() << "Disconnected from Mosquitto";
+        Log::write("BambuEmulator", "Disconnected to Mosquitto");
     });
 
     QObject::connect(mqtt, &QMqttClient::messageReceived, this, &BambuEmulator::slicerRequestRecieved);
 }
 
 void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqttTopicName &topic) {
-    qDebug() << "Message from slicer on topic" << topic.name();
-    if (BambuEmulator::requestFilter.match(topic)) {
-        QJsonParseError err = QJsonParseError();
-        QJsonDocument doc = QJsonDocument::fromJson(message, &err);
-        if (err.error != QJsonParseError::NoError) {
-            return Error("MqttJsonParseError", err.errorString(), El::Warning).handle();
-        }
-        if (!doc.isObject()) {
-            return Error("MqttJsonParseError", "Message is not Json object", El::Warning).handle();
-        }
-        QJsonObject msg = doc.object();
-        QString vSN = topic.name().split("/").at(1);
-        if (printers.contains(vSN)) {
-            BambuLab* printer = printers.value(vSN);
-            if (msg.contains("print") && msg.value("print").isObject()) { //Handle print request somehow
-                QJsonObject print = msg.value("print").toObject();
-                if (print.contains("command") && print.value("command").isString()) {
-                    QString cmd = print.value("command").toString().toLower();
-                    if (cmd != "gcode_file" && /*cmd != "gcode_line" &&*/ cmd != "project_file") {
-                        printer->mqtt->publish(printer->requestTopic, QJsonDocument(msg).toJson(QJsonDocument::Compact));
-                    } else {
-                        qDebug() << "Print" + cmd + "request recieved from slicer:" << msg;
-                    }
+    Log::write("BambuEmulator", "Message from slicer on topic " + topic.name());
+    if (!BambuEmulator::requestFilter.match(topic)) return;
+    QJsonParseError err = QJsonParseError();
+    QJsonDocument doc = QJsonDocument::fromJson(message, &err);
+    if (err.error != QJsonParseError::NoError) {
+        return Error("MqttJsonParseError", err.errorString(), El::Warning).handle();
+    }
+    if (!doc.isObject()) {
+        return Error("MqttJsonParseError", "Message is not Json object", El::Warning).handle();
+    }
+    QJsonObject msg = doc.object();
+    QString vSN = topic.name().split("/").at(1);
+    if (printers.contains(vSN)) {
+        BambuLab* printer = printers.value(vSN);
+        if (msg.contains("print") && msg.value("print").isObject()) { //Handle print request somehow
+            QJsonObject print = msg.value("print").toObject();
+            if (print.contains("command") && print.value("command").isString()) {
+                QString cmd = print.value("command").toString().toLower();
+                if (cmd != "gcode_file" && /*cmd != "gcode_line" &&*/ cmd != "project_file") {
+                    printer->mqtt->publish(printer->requestTopic, QJsonDocument(msg).toJson(QJsonDocument::Compact));
                 } else {
-                    qDebug() << "Unknown print request recieved from slicer:" << msg;
+                    Log::write("BambuEmulator", "Print" + cmd + "request recieved from slicer:" + QJsonDocument(msg).toJson(QJsonDocument::Indented));
                 }
-            } else { //Forward request to printer
-                printer->mqtt->publish(printer->requestTopic, QJsonDocument(msg).toJson(QJsonDocument::Compact));
+            } else {
+                Error::handle("BambuEmulatorUknownRequestError", QJsonDocument(msg).toJson(QJsonDocument::Indented), El::Warning);
             }
+        } else { //Forward request to printer
+            printer->mqtt->publish(printer->requestTopic, QJsonDocument(msg).toJson(QJsonDocument::Compact));
         }
-    } else {
-
     }
 }
 
@@ -107,7 +104,7 @@ void BambuEmulator::slicerHandshake(QTcpSocket* socket, BambuLab* printer) {
 
     if (data.size() < 6) return;
     if (data[0] != (char)0xa5 || data[1] != (char)0xa5) {
-        Error("BambuEmulatorServerError", "Invalid packet header", El::Warning);
+        Error("BambuEmulatorBindingError", "Invalid packet header", El::Warning);
         return;
     }
 
@@ -116,19 +113,20 @@ void BambuEmulator::slicerHandshake(QTcpSocket* socket, BambuLab* printer) {
 
     // Extract JSON
     QByteArray jsonData = data.mid(4, data.length() - 6); //Strip magic bytes (Fuck you BambuLab eat my ass)
-    qDebug() << "Received:" << jsonData;
+    //qDebug() << "Received:" << jsonData;
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
-    if (!doc.isObject()) return Error("BambuEmulatorServerError", "Packet data is not Json Object", El::Warning).handle();
+    if (!doc.isObject()) return Error("BambuEmulatorBindingError", "Device binding packet data is not JSON Object", El::Warning).handle();
 
     QJsonObject msg = doc.object();
-    if (!msg.contains("login")) return;
+    if (!msg.contains("login") || !msg.value("login").isObject()) return Error("BambuEmulatorBindingError", "Invalid command wrapper").handle();
 
     QJsonObject login = msg["login"].toObject();
-    QString command = login["command"].toString();
-    QString seqId = login["sequence_id"].toString();
+    QString command = login["command"].toString("");
+    QString seqId = login["sequence_id"].toString("20000");
 
-    if (command != "detect") return;
+    if (command != "detect") return Error("BambuEmulatorBindingError", "Invalid command").handle();
+    Log::write("BambuEmulatorBinding", "Recieved binding request for " + printer->name);
     // Respond with printer info
     QJsonObject response;
     response["command"] = "detect";
@@ -160,7 +158,8 @@ void BambuEmulator::slicerHandshake(QTcpSocket* socket, BambuLab* printer) {
     socket->write(packet);
     socket->flush();
 
-    qDebug() << "Sent response:" << jsonDataOut;
+    //qDebug() << "Sent response:" << jsonDataOut;
+    Log::write("BambuEmulatorBinding", "Sent binding response to slicer for " + printer->name);
 }
 
 void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
@@ -190,23 +189,23 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
 
         //Create servers on ports 3000 and 3002 to emulate device binding behavior
         if (!tlsServer->listen(QHostAddress(virtualIP), printer->bindingPortTLS)) {
-            Error("BambuEmulatorServerError", "Failed to listen on" + virtualIP + ":" + printer->bindingPortTLS ,El::Critical).handle();
+            Error("BambuEmulatorServerError", "Failed to listen on" + virtualIP + ":" + QString(printer->bindingPortTLS) ,El::Critical).handle();
             tlsServer->deleteLater();
             tcpServer->deleteLater();
             return;
         }
         if (!tcpServer->listen(QHostAddress(virtualIP), printer->bindingPortTCP)) {
-            Error("BambuEmulatorServerError", "Failed to listen on" + virtualIP + ":" + printer->bindingPortTCP ,El::Critical).handle();
+            Error("BambuEmulatorServerError", "Failed to listen on" + virtualIP + ":" + QString(printer->bindingPortTCP) ,El::Critical).handle();
             tlsServer->deleteLater();
             tcpServer->deleteLater();
             return;
         }
 
-        qDebug() << "Printer" << printer->name << "listening on" << virtualIP;
+        Log::write("BambuEmulatorServer", "Printer " + printer->name + " listening on " + virtualIP);
 
         connect(tlsServer, &QTcpServer::newConnection, this, [this, tlsServer, printer]() {
             QTcpSocket* socket = tlsServer->nextPendingConnection();
-            qDebug() << "Connection received for" << printer->name;
+            Log::write("BambuEmulatorBinding", "SSL Connection received for " + printer->name);
 
             // Wrap in SSL
             QSslSocket* sslSocket = new QSslSocket(this);
@@ -224,7 +223,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
             sslSocket->setPrivateKey("server.key");
 
             connect(sslSocket, &QSslSocket::encrypted, this, [sslSocket, printer]() {
-                qDebug() << "SSL handshake complete for" << printer->name;
+                Log::write("BambuEmulatorBinding", "SSL handshake complete");
             });
 
             // connect(sslSocket, QOverload<const QList<QSslError>&>::of(&QSslSocket::sslErrors),
@@ -238,7 +237,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
             });
 
             connect(sslSocket, &QSslSocket::disconnected, this, [sslSocket, printer]() {
-                qDebug() << "Client disconnected from port " + QString(printer->bindingPortTLS);
+                Log::write("BambuEmulatorBinding", "Binding complete for " + printer->name + " over SSL");
                 sslSocket->deleteLater();
             });
 
@@ -248,14 +247,14 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
 
         connect(tcpServer, &QTcpServer::newConnection, this, [this, tcpServer, printer]() {
             QTcpSocket* tcpSocket = tcpServer->nextPendingConnection();
-            qDebug() << "Connection received for" << printer->name;
+            Log::write("BambuEmulatorBinding", "TCP Connection received for " + printer->name);
 
             connect(tcpSocket, &QTcpSocket::readyRead, this, [this, tcpSocket, printer]() {
                 slicerHandshake(tcpSocket, printer);
             });
 
             connect(tcpSocket, &QSslSocket::disconnected, this, [tcpSocket, printer]() {
-                qDebug() << "Client disconnected from port " + QString(printer->bindingPortTLS);
+                Log::write("BambuEmulatorBinding", "Binding complete for " + printer->name + " over TCP");
                 tcpSocket->deleteLater();
             });
 
@@ -275,9 +274,9 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
 }
 
 void BambuEmulator::startUDPNotify(BambuLab* printer) {
-    qDebug() << "Sending UDP Notifys";
+    Log::write("BambuEmulator", "Starting UDP Notifications for " + printer->name);
     QUdpSocket* udp = new QUdpSocket(this);
-    if (!udp->bind(QHostAddress(printer->virtualIP), 2021, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+    if (!udp->bind(QHostAddress(printer->virtualIP), printer->udpBroadcastPort, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
         Error::handle("BambuEmulatorBroadcastError", "UDP Bind error: " + udp->errorString(), El::Warning);
         udp->deleteLater();
         return;
@@ -301,25 +300,19 @@ void BambuEmulator::startUDPNotify(BambuLab* printer) {
         "DevVersion.bambu.com: " + printer->firmwareVer + "\r\n"
         "DevCap.bambu.com: 1";
     QByteArray notifyMsg = msg2.toUtf8();
-    udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), 2021);
-    qDebug() << "Sent UDP Notify";
-    //int count = 0;
+    udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), printer->udpBroadcastPort);
+
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [=]() mutable {
-        udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), 2021);
-        // if (++count >= 7) {
-        //     timer->stop();
-        //     timer->deleteLater();
-        //     udp->deleteLater();
-        // }
+        udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), printer->udpBroadcastPort);
     });
     timer->start(5000);
 }
 
 void BambuEmulator::startSSDPNotify(BambuLab* printer) {
-    qDebug() << "Sending SDDP Notifys";
+    Log::write("BambuEmulator", "Starting SSDP Notifications for " + printer->name);
     QUdpSocket* udp = new QUdpSocket(this);
-    if (!udp->bind(QHostAddress(printer->virtualIP), 1900, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
+    if (!udp->bind(QHostAddress(printer->virtualIP), printer->ssdpPort, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
         Error::handle("BambuEmulatorBroadcastError", "UDP Bind error: " + udp->errorString(), El::Warning);
         udp->deleteLater();
         return;
@@ -341,16 +334,15 @@ void BambuEmulator::startSSDPNotify(BambuLab* printer) {
         "DevVersion.bambu.com: " + printer->firmwareVer + "\r\n"
         "DevCap.bambu.com: 1";
     QByteArray notifyMsg = msg2.toUtf8();
-    udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), 2021);
-    qDebug() << "Sent SSDP Notify";
-    //int count = 0;
+    udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), printer->udpBroadcastPort);
+
     QTimer *timer = new QTimer(this);
-    bool useMulticast = false;
+    bool useMulticast = false; //Match printer behavior, alternating between true ssdp mutlicast and udp broadcast
     connect(timer, &QTimer::timeout, this, [=]() mutable {
         if (useMulticast) {
-            udp->writeDatagram(notifyMsg, QHostAddress("239.255.255.250"), 1990);
+            udp->writeDatagram(notifyMsg, QHostAddress("239.255.255.250"), printer->udpMulticastPort);
         } else {
-            udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), 2021);
+            udp->writeDatagram(notifyMsg, QHostAddress("255.255.255.255"), printer->udpBroadcastPort);
         }
         useMulticast = !useMulticast;
     });
@@ -359,28 +351,12 @@ void BambuEmulator::startSSDPNotify(BambuLab* printer) {
 
 Error BambuEmulator::fetchPrinterInfo(BambuLab* printer) {
     QSslSocket tcpSocket;
-    // QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    // sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
-    // sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
-    // sslConfig.setCaCertificates({printer->certificate});
-    // sslSocket.setSslConfiguration(sslConfig);
-    // sslSocket.setPeerVerifyName(printer->virtualSN);
 
-    qDebug() << "Connecting to" << printer->hostname << "port" << printer->bindingPortTCP;
+    Log::write("BambuEmulator", "Fetching binding info from " + printer->name + "@" + printer->hostname + ":" + printer->bindingPortTCP);
 
-    // sslSocket.connectToHostEncrypted(printer->hostname, 3002);
-    // if (!sslSocket.waitForEncrypted(5000)) {
-    //     qDebug() << "SSL errors:" << sslSocket.sslHandshakeErrors();
-    //     qDebug() << "Error string:" << sslSocket.errorString();
-    //     return Error("BambuEmulatorFetchError", "SSL handshake failed", El::Warning);
-    // }
-    // qDebug() << "SSL errors:" << sslSocket.sslHandshakeErrors();
-    // qDebug() << "Error string:" << sslSocket.errorString();
-
-    //qDebug() << "Connected to" << printer->hostname << "via SSL";
     tcpSocket.connectToHost(printer->hostname, printer->bindingPortTCP);
     if (!tcpSocket.waitForConnected(5000)) {
-        return Error("BambuEmulatorFetchError", "TCP Socket Couldn't Connect", El::Warning);
+        return Error("BambuEmulatorFetchError", "TCP Socket failed to connect", El::Warning);
     }
     // Create detect command
     QJsonObject login;
@@ -426,7 +402,7 @@ Error BambuEmulator::fetchPrinterInfo(BambuLab* printer) {
     //quint16 respLength = qFromLittleEndian<quint16>(reinterpret_cast<const uchar*>(response.constData()));
     QByteArray jsonResponse = response.mid(4, response.length()-6);
 
-    qDebug() << "Response JSON:" << jsonResponse;
+    //qDebug() << "Response JSON:" << jsonResponse;
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonResponse);
     if (!doc.isObject()) {
@@ -451,6 +427,7 @@ Error BambuEmulator::fetchPrinterInfo(BambuLab* printer) {
 
     tcpSocket.disconnectFromHost();
     tcpSocket.deleteLater();
+    Log::write("BambuEmulator", "Retrieved binding info for " + printer->name);
     return Error::None();
 }
 

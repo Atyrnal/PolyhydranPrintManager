@@ -4,8 +4,6 @@ size_t FtpsClient::write_data(void *ptr, size_t size, size_t nmemb, void *stream
     return fwrite(ptr, size, nmemb, static_cast<FILE*>(stream));
 }
 
-#include <QDebug>
-
 FtpsClient::FtpsClient(QObject *parent) : QObject(parent) {
     curl_global_init(CURL_GLOBAL_DEFAULT);
 }
@@ -40,7 +38,7 @@ void FtpsClient::uploadFile(const QString &localFile, const QString &host, const
         return;
     }
 
-    QString url = QString("ftps://%1:990/%2").arg(host, remotePath);
+    QString url = QString("ftps://%1:990/%2").arg(host, remotePath); //Maybe specify magic number port 990?
 
     curl_easy_setopt(m_curl, CURLOPT_URL, url.toUtf8().constData());
     curl_easy_setopt(m_curl, CURLOPT_USERNAME, username.toUtf8().constData());

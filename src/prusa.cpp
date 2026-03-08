@@ -9,6 +9,7 @@
 #include <QHttpMultiPart>
 #include <QFileInfo>
 #include <QJsonObject>
+#include "headers/errors.hpp"
 
 Prusa::Prusa(QObject* parent) : Printer(parent) {
     //connect(&manager, &QNetworkAccessManager::authenticationRequired, this, &PrusaLink::provideAuth);
@@ -47,12 +48,12 @@ void Prusa::startPrint(const QString &fileName) {
 }*/
 
 void Prusa::sendGCode(QString filepath) {
-
+    Log::write("PrusaPrinter["+name+"@"+hostname+"]", "Attempting to start print");
     //Read gcode file
     QFileInfo fileInfo(filepath);
     QFile file = QFile(filepath);
     if (!file.open(QIODevice::ReadOnly)) {
-        qWarning() << "Cannot open file for upload:" << filepath;
+        Error::handle("PrusaPrinterUploadError", "Cannot open file for upload: " + filepath);
         return;
     }
     QByteArray fileData = file.readAll();
@@ -74,12 +75,12 @@ void Prusa::sendGCode(QString filepath) {
     QObject::connect(uploadReply, &QNetworkReply::finished, uploadReply, [=]() {
         //Log if the upload succeeded or failed
         if (uploadReply->error() != QNetworkReply::NoError) {
-            qWarning() << "Upload failed:" << uploadReply->errorString();
+            Error::handle("PrusaPrinterUploadError", uploadReply->errorString());
             uploadReply->deleteLater();
             return;
         }
-        QByteArray resp = uploadReply->readAll();
-        qDebug() << "Upload succeeded response:" << resp;
+        //QByteArray resp = uploadReply->readAll();
+        Log::write("PrusaPrinter["+name+"@"+hostname+"]", "Print upload succeeded");
         uploadReply->deleteLater();
     });
 }

@@ -26,6 +26,16 @@ void ErrorHandler::softHandle(const Error &err) {
     printLn(err);
 }
 
+void Log::write() const {
+    ErrorHandler::log(*this);
+}
+
+class Log Log::write(QString t, QString m) {
+    Log _new = Log(t, m);
+    ErrorHandler::log(_new);
+    return _new;
+}
+
 void ErrorHandler::handle(const Error &err) {
     if (!err.isError()) return;
     printLn(err);
@@ -46,8 +56,17 @@ void ErrorHandler::handle(const Error &err) {
     }
 }
 
+void ErrorHandler::log(const class Log &log) {
+    qDebug().noquote().nospace() << genLogLineLog(log.type, log.message) << "\033[0m";
+}
+
+
 QString ErrorHandler::genLogLine(const QString &lvl, const QString &content) {
     return QDateTime::currentDateTimeUtc().toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + lvl + " [ErrorHandler]: " + content;
+}
+
+QString ErrorHandler::genLogLineLog(const QString &type, const QString &content) {
+    return QDateTime::currentDateTimeUtc().toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + "LOG  " + " ["+type+"]: " + content;
 }
 
 void ErrorHandler::printLn(ErrorLevel lvl, const QString &content) {
@@ -56,27 +75,29 @@ void ErrorHandler::printLn(ErrorLevel lvl, const QString &content) {
     default:
     case El::None:
         lvlindicator = "NONE ";
-        qDebug().noquote() << genLogLine(lvlindicator, content) << "\033[0m";
+        qDebug().noquote().nospace() << genLogLine(lvlindicator, content) << "\033[0m";
+        break;
+    case El::Log:
         break;
     case El::Debug:
         lvlindicator = "DEBUG";
-        qDebug().noquote() << genLogLine(lvlindicator, content) << "\033[0m";
+        qDebug().noquote().nospace() << genLogLine(lvlindicator, content) << "\033[0m";
         break;
     case El::Trivial:
         lvlindicator = "TRIV ";
-        qInfo().noquote() << genLogLine(lvlindicator, content) << "\033[0m";
+        qInfo().noquote().nospace() << genLogLine(lvlindicator, content) << "\033[0m";
         break;
     case El::Warning:
         lvlindicator = "WARN ";
-        qWarning().noquote() << "\033[33m" << genLogLine(lvlindicator, content) << "\033[0m";
+        qWarning().noquote().nospace() << "\033[33m" << genLogLine(lvlindicator, content) << "\033[0m";
         break;
     case El::Critical:
         lvlindicator = "CRIT ";
-        qCritical().noquote() << "\033[31m" << genLogLine(lvlindicator, content) << "\033[0m";
+        qCritical().noquote().nospace() << "\033[31m" << genLogLine(lvlindicator, content) << "\033[0m";
         break;
     case El::Fatal:
         lvlindicator = "FATAL";
-        qFatal().noquote() << "\033[41m" << genLogLine(lvlindicator, content) << "\033[0m";
+        qFatal().noquote().nospace() << "\033[41m" << genLogLine(lvlindicator, content) << "\033[0m";
         break;
     }
 };

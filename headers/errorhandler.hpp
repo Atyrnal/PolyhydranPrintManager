@@ -22,9 +22,11 @@ public:
         if (err == nullptr) return;
         softHandle(*err);
     };
+    static void log(const class Log &log);
     static inline QTBackend* bk = nullptr;
 private:
     static QString genLogLine(const QString &lvl, const QString &content);
+    static QString genLogLineLog(const QString &lvl, const QString &content);
     static void printLn(ErrorLevel lvl, const QString &content);
     static void printLn(const Error &err);
 };

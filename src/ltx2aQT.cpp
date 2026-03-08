@@ -29,7 +29,6 @@ void LTx2A::start() {
         } else {
             return ErrorHandler::handle(Error("SerialError", error, El::Critical));
         }
-        qWarning() << "Serial Error Occurred: " << error; //Print error
     });
     thread->start(); //Run the thread
 }

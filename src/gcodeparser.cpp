@@ -20,13 +20,13 @@ Eo<QMap<QString, QString>> GCodeParser::parseFile(QString filepath) {
     QFileInfo fileInfo = QFileInfo(filepath);
     QMap<QString, QString> output;
     if (fileInfo.fileName().toLower().endsWith(".gcode")) {
-        qDebug() << "parsing gcode";
+        Log::write("GCodeParser", "parsing .gcode");
         output = parseGCode(readGCode(QFile(filepath)));
     } else if (fileInfo.fileName().toLower().endsWith(".bgcode")) {
-        qDebug() << "parsing bgcode";
+        Log::write("GCodeParser", "parsing .bgcode");
         output = parseBGCode(readBGCode(QFile(filepath)));
     } else if (fileInfo.fileName().toLower().endsWith(".gcode.3mf")) {
-        qDebug() << "parsing gcode.3mf";
+        Log::write("GCodeParser", "parsing .gcode.3mf");
         QMap<QString, QByteArray> rawPlates = extractGCode3mf(filepath);
         if (rawPlates.empty()) {
             return eop("3mfGcodeNotFoundError", "Unable to locate gcode file within: " + filepath, El::Warning);
@@ -77,7 +77,7 @@ QMap<QString, QByteArray> GCodeParser::extractGCode3mf(const QString &filepath) 
 
 QMap<QString, QString> GCodeParser::parseGCode(QVector<QString> lines) {
     QMap<QString, QString> properties = QMap<QString, QString>();
-    qDebug() << lines.size();
+    //qDebug() << lines.size();
     for (int i = 0; i < min(lines.size(), 6000); i++) {
         QString line = lines[i];
         for (int p = 0; p < GCODE_TARGETS.size(); p++) {
@@ -112,7 +112,7 @@ QMap<QString, QString> GCodeParser::parseGCode(QVector<QString> lines) {
 
 QMap<QString, QString> GCodeParser::parseBGCode(QVector<QString> lines) {
     QMap<QString, QString> properties = QMap<QString, QString>();
-    qDebug() << lines.size();
+    //qDebug() << lines.size();
     for (int i = 0; i < min(lines.size(), 2000); i++) {
         QString line = lines[i];
         for (int p = 0; p < BGCODE_TARGETS.size(); p++) {

@@ -135,6 +135,9 @@ private:
     QJsonObject latestReport;
     quint16 bindingPortTCP = 3000;
     quint16 bindingPortTLS = 3002;
+    quint16 udpMulticastPort = 1990;
+    quint16 udpBroadcastPort = 2021;
+    quint16 ssdpPort = 1900;
     QMqttClient* mqtt;
     FtpsClient* ftps;
     QString storageType = "sdcard"; //"sdcard", "internal"

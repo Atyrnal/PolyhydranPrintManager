@@ -203,9 +203,9 @@ void QTBackend::bringWindowToFront(DWORD pid) {
     if (mainHwnd) {
         ShowWindow(mainHwnd, SW_RESTORE);//Show the window
         SetForegroundWindow(mainHwnd); //Bring it to front
-        qDebug() << "Brought OrcaSlicer main window to front.";
+        Log::write("QtBackend", "Brought OrcaSlicer main window to front");
     } else {
-        qDebug() << "Could not find a visible top-level OrcaSlicer window.";
+        Error::handle("QtBackendError", "Could not find OrcaSlicer window", El::Trivial);
     }
 }
 #endif
@@ -223,8 +223,10 @@ AppState QTBackend::appstate() {
 
 Q_INVOKABLE void QTBackend::fileUploaded(const QUrl &fileUrl) {
     QString filepath = fileUrl.toLocalFile(); //get filepath from url
+    Log::write("QtBackend", "File uploaded: " + filepath);
     Eo<QMap<QString, QString>> propertiesEo = GCodeParser::parseFile(filepath); //parse the gcode
-    qDebug() << propertiesEo;
+
+    //qDebug() << propertiesEo;
     if (propertiesEo.isError()) {
         return propertiesEo.handle();
     }
@@ -233,13 +235,13 @@ Q_INVOKABLE void QTBackend::fileUploaded(const QUrl &fileUrl) {
     for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
         propertiesForJS.insert(it.key(), it.value());
     }
-
+    Log::write("QtBackend", "Loaded print info for: " + filepath);
     //emit signals to main loop and QML to update appstate and load print files
     emit printInfoLoaded(propertiesForJS);
     emit printLoaded(loadedPrinterId, filepath, properties);
 }
 
-Q_INVOKABLE void QTBackend::processCommand(const QString &command, const QString &tcltxt, const QString &tcctxt) {
+Q_INVOKABLE void QTBackend::processCommand(const QString &command, const QString &tcltxt, const QString &tcctxt) { //TODO: remove this bs, making a TUI in a GUI framework is dumb. Make a seperate config tool
     QStringList directives = command.split(" ");
     for (int i = 0; i < directives.length(); i++) {
         QString directive = directives[i];
@@ -280,7 +282,7 @@ Q_INVOKABLE void QTBackend::processCommand(const QString &command, const QString
 }
 
 Q_INVOKABLE void QTBackend::helpButtonClicked() {
-    qDebug() << "Help! clicked." << Qt::endl;
+
 }
 
 Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button pressed
@@ -294,13 +296,13 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
     DWORD pid = findProcessId(exeName);
 
     if (pid != 0) { //if process running, bring it to front instead of starting a new oen
-        qDebug() << "OrcaSlicer is already running, bringing to front.";
+        Log::write("QtBackend", "Bringing running OrcaSlicer instance to front");
         bringWindowToFront(pid);
     } else if (QFile::exists(exePath)){ //Otherwise launch it (if it is installed)
-        qDebug() << "Launching OrcaSlicer...";
+        Log::write("QtBackend", "Launching OrcaSlicer instance");
         QProcess::startDetached(exePath);
     } else {
-        qWarning() << "OrcaSlicer installation not found";
+        Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
     }
     #else
     QString exe = QStandardPaths::findExecutable("orca-slicer");
@@ -309,10 +311,10 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
     if (exe.isEmpty())
         exe = "/usr/bin/orca-slicer"; // fallback
     if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
-        qDebug() << "Launching OrcaSlicer...";
+        Log::write("QtBackend", "Launching OrcaSlicer instance");
         QProcess::startDetached(exe);
     } else {
-        qWarning() << "OrcaSlicer installation not found";
+        Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
     }
     #endif
 
@@ -345,7 +347,7 @@ void QTBackend::jobLoaded(quint32 id, const QString &filepath, const QMap<QStrin
 void QTBackend::cardScanned(const QString &cardid) {
     if (appstate() != AppState::UserScan) {
         currentUserID = cardid;
-        qDebug() << "User card scanned: " + cardid;
+        Log::write("QtBackendSerial", "User card scanned: " + cardid);
 
         //Get user info
         auto result = queryDatabase("SELECT cics, trainingCompleted, authLevel FROM users WHERE id = :id LIMIT 1", {{":id", cardid}});
@@ -367,7 +369,7 @@ void QTBackend::cardScanned(const QString &cardid) {
             //ensure all qualifications are met, show feedback message if not;
             if (!isCICS) return showMessage("Sorry, but only CICS Students\nMay print at the Physical Computing Makerspace", "I Understand");
             if (!training) return showMessage("Please ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::StaffScan);
-            qDebug() << printDuration;
+            //qDebug() << printDuration;
             if (printDuration > 6.0) return showMessage("Prints cannot be longer than 6 hours\nPlease split up your print and try again");
         }
     } else if (appstate() == AppState::StaffScan) {

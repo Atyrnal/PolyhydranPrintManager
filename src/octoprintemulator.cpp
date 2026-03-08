@@ -32,7 +32,7 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
     });*/
 
     server.route("/api/version", []() { //Hey OctoPrint is over here!!! //emulate octoprint version api endpoint
-        qDebug() << "/api/version called!";
+        //qDebug() << "/api/version called!";
         return QJsonObject {
             {"api", "0.1"},
             {"version", "1.3.10"},
@@ -42,7 +42,7 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
 
     //This is the api endpoint OrcaSlicer calls to upload the print file
     server.route("/api/files/<arg>", this, [this](const QString &location, const QHttpServerRequest &request) -> QHttpServerResponse {
-        qDebug() << "/api/files called!";
+        //qDebug() << "/api/files called!";
 
         //Ensure the content type matches the expected for file upload
         if (!request.headers().contains("Content-Type") || !request.headers().value("Content-Type").contains("multipart/form-data")) {
@@ -119,7 +119,7 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
         for (int i = 0; i < oldfiles.size(); ++i) {
             const QFileInfo &fileInfo = oldfiles.at(i);
             if (!uploadDir.remove(fileInfo.fileName())) {
-                qWarning() << "Failed to remove file:" << fileInfo.fileName();
+                Error::handle("OctoprintEmualtor", "Failed to remove file: " + fileInfo.fileName(), El::Warning);
             }
         }
 
@@ -258,12 +258,13 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
 
     QTcpServer* tcp = new QTcpServer(this); // create TCP server
     if (!tcp->listen(QHostAddress::LocalHost, port)) { // start listening
-        //qCritical() << "Failed to start TCP server on port";
+        Error::handle("OctoprintEmulator", "Failed to start TCP server on port " + QString(port), El::Critical);
         return;
     }
 
     if (!server.bind(tcp)) { // bind QHttpServer to TCP server
         //qCritical() << "Failed to bind QHttpServer to TCP server";
+        Error::handle("OctoprintEmulator", "Failed to bind to HttpServer to TCP server", El::Critical);
         return;
     }
 }

@@ -49,7 +49,13 @@ void PrinterManager::loadConfig(QJsonObject config){
             addPrinter(bbl);
         } else continue;
     }
-    qDebug() << "Loaded Printer Configuration: " << printers;
+    QList<Printer*> printersVals = printers.values();
+    QList<QString> printersPrinted;
+    for (int i = 0; i < printersVals.length(); i++) {
+        Printer* printer = printersVals[i];
+        printersPrinted.append(printer->getName() + " (" +printer->getBrand() + " " + printer->getModel() + ")");
+    }
+    Log::write("PrinterManager", "Loaded Printer Configuration: [" + printersPrinted.join(", ") + "]");
 }
 
 Printer* PrinterManager::getPrinter(quint32 id) {
@@ -92,23 +98,15 @@ void PrinterManager::closing() {
 }
 
 void PrinterManager::removePrinter(quint32 id) {
-    if (bblEmu != nullptr && printers[id]->getBrand() == "BambuLab") {
-        bblEmu->removePrinter(id);
-    }
+    if (bblEmu != nullptr && printers[id]->getBrand() == "BambuLab") bblEmu->removePrinter(id);
+    if (octEmus.contains(id)) octEmus.remove(id);
     printers.remove(id);
-    if (octEmus.contains(id)) {
-        octEmus.remove(id);
-    }
 }
 
 void PrinterManager::startPrint(quint32 id, const QString &filepath, QJsonObject properties) {
     if (!printers.contains(id)) return;
     Printer* p = printers[id];
-    if (p->getBrand() == "BambuLab") {
-        p->startPrint(filepath);
-    } else {
-        p->startPrint(filepath);
-    }
+    p->startPrint(filepath);
 }
 
 

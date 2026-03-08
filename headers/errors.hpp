@@ -8,6 +8,7 @@
 
 enum ErrorLevel {
     None,
+    Log,
     Debug,
     Trivial,
     Warning,
@@ -34,6 +35,21 @@ public:
         debug.nospace().noquote() << err.type << "(\"" << err.errorString << "\", " << err.level <<")";
         return debug;
     };
+};
+
+class Log {
+public:
+    Log(QString t = "", QString m = "") : message(m), type(t) {};
+    const QString message;
+    const QString type;
+    const ErrorLevel level = ErrorLevel::Log;
+    static Log write(QString t="", QString m="");
+    void write() const;
+    friend QDebug operator<<(QDebug debug, const Log &log) {
+        QDebugStateSaver saver(debug);
+        debug.nospace().noquote() << log.type << "(\"" << log.message << "\")";
+        return debug;
+    }
 };
 
 template<typename T>
