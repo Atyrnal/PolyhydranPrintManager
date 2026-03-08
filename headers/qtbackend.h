@@ -65,7 +65,7 @@ protected:
     QJsonObject config;
     //Services
     QSqlDatabase db;
-    PrinterManager pm;
+    PrinterManager* pm;
     LTx2A rfidReader;
     //QML stuff
     QQmlApplicationEngine* engine;

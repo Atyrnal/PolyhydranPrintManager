@@ -24,8 +24,8 @@ void PrinterManager::loadConfig(QJsonObject config){
         if (!prntrs[i].isObject()) continue;
         QJsonObject printer = prntrs[i].toObject();
         if (!printer.contains("brand") || !printer.value("brand").isString()) continue;
-        QString brand = printer.value("brand").toString();
-        if (brand == "Prusa") {
+        QString brand = printer.value("brand").toString().toLower();
+        if (brand == "prusa") {
             if (!printer.contains("hostname") || !printer.contains("apiKey") || !printer.value("hostname").isString() || !printer.value("apiKey").isString()) continue;
             Prusa* prs = new Prusa(
                 printer.value("name").toString("Unnamed"),
@@ -35,7 +35,7 @@ void PrinterManager::loadConfig(QJsonObject config){
                 printer.value("storageType").toString("usb")
             );
             addPrinter(prs);
-        } else if (brand == "BambuLab") {
+        } else if (brand == "bambulab") {
             if (!printer.contains("hostname") || !printer.contains("accessCode") || !printer.value("hostname").isString() || !printer.value("accessCode").isString()) continue;
             BambuLab* bbl = new BambuLab(
                 printer.value("name").toString("Unnamed"),
@@ -66,9 +66,9 @@ quint32 PrinterManager::addPrinter(Printer* p) {
             p->setBrand("Unknown");
         } else {
             if (bblEmu == nullptr) {
-                bblEmu = new BambuEmulator();
+                bblEmu = new BambuEmulator(parent());
             }
-
+            //sqDebug() << "adding bambu printer with id:" << id;
             bblEmu->addPrinter(id, bblp);
             return id;
         }

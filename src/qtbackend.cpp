@@ -34,14 +34,21 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
         Error::handle("DatabaseConnectionError", "Unable to open database", El::Fatal); //Should exit program
     }
 
+    pm = new PrinterManager(parent);
+
     engine = eng;
     engine->rootContext()->setContextProperty("backend", this);
-    engine->rootContext()->setContextProperty("printermanager", &pm);
+    engine->rootContext()->setContextProperty("printermanager", pm);
+    #ifdef Q_OS_WIN
+    engine->rootContext()->setContextProperty("isWindows", true);
+    #else
+    engine->rootContext()->setContextProperty("isWindows", false);
+    #endif
 
     connect(this, &QTBackend::printLoaded, this, &QTBackend::jobLoaded);
-    connect(&pm, &PrinterManager::jobLoaded, this, &QTBackend::jobLoaded);
+    connect(pm, &PrinterManager::jobLoaded, this, &QTBackend::jobLoaded);
 
-    connect(app, &QCoreApplication::aboutToQuit, &pm, &PrinterManager::closing);
+    connect(app, &QCoreApplication::aboutToQuit, pm, &PrinterManager::closing);
 
 
     QObject::connect(&rfidReader, &LTx2A::cardScanned, this, [this]() { //Connect the rfidReader cardScanned event to the lambda
@@ -320,7 +327,7 @@ void QTBackend::setRoot(QObject* r) {
 
 void QTBackend::loadConfig(QJsonObject cfg) {
     config = cfg;
-    pm.loadConfig(cfg);
+    pm->loadConfig(cfg);
 }
 
 void QTBackend::showMessage(QString message, QString acceptText, int redirectState) {
@@ -422,7 +429,7 @@ void QTBackend::cardScanned(const QString &cardid) {
     //Send print log to database
     auto response3 = queryDatabase("INSERT INTO printLog (printerName, durationHours, weight, printer, user, filament, filename, timestamp) "
                                    "VALUES(:pn, :dh, :wt, :pr, :us, :fm, :fn, :tm)", {
-                                    {":pn", pm.getPrinter(loadedPrinterId)->getName()},
+                                    {":pn", pm->getPrinter(loadedPrinterId)->getName()},
                                     {":dh", parseDuration(loadedPrintInfo["duration"])},
                                     {":wt", loadedPrintInfo["weight"].toDouble()},
                                     {":pr", loadedPrintInfo["printer"]},
@@ -436,7 +443,7 @@ void QTBackend::cardScanned(const QString &cardid) {
     }
 
     //Send the print to the printer
-    pm.startPrint(loadedPrinterId, loadedPrintFilepath);
+    pm->startPrint(loadedPrinterId, loadedPrintFilepath);
 }
 
 

@@ -38,7 +38,7 @@ ApplicationWindow { //Root app window
     }
 
     onClosing: function(close) { //Dont let user close kiosk app
-        close.accepted = false
+        if (isWindows) close.accepted = false
     }
 
     Timer {

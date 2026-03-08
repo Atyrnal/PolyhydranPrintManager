@@ -11,6 +11,7 @@
 #include <QJsonArray>
 #include <QSslCipher>
 #include <QSslKey>
+#include "headers/errors.hpp"
 
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}
 
@@ -23,8 +24,8 @@ BambuLab::BambuLab(QString name, QString model, QString hostname, QString access
     mqtt = new QMqttClient();
     ftps = new FtpsClient();
 
-    qDebug() << "Connecting to BambuLab printer...";
-    this->startConnection();
+    qDebug() << "Connecting to BambuLab printer" << name << "(" << model << ")";
+    loadCertificate(&BambuLab::startConnection);
 }
 
 void BambuLab::updateState() {
@@ -68,19 +69,24 @@ void BambuLab::startConnection() {
     mqtt->setPort(port);
     mqtt->setUsername(username);
     mqtt->setPassword(accessCode);
-    mqtt->setClientId("PCM 3DP Kiosk Service");
+    mqtt->setProtocolVersion(QMqttClient::MQTT_3_1_1);
+    mqtt->setCleanSession(true);
+    mqtt->setKeepAlive(60);
+    mqtt->setClientId("POLYHYDRAN Print Manager");
 
 
     //TLS Encryption, no cerificate validation
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
-    sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
-    sslConfig.setProtocol(QSsl::AnyProtocol);
-    sslConfig.setLocalCertificate(QSslCertificate());
-    sslConfig.setPrivateKey(QSslKey());
-    sslConfig.setCiphers(QSslConfiguration::supportedCiphers());
+    sslConfig.setPeerVerifyMode(QSslSocket::VerifyPeer);
+    sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
+    sslConfig.setCaCertificates({certificate});
+    // sslConfig.setLocalCertificate(QSslCertificate());
+    // sslConfig.setPrivateKey(QSslKey());
+    //sslConfig.setCiphers(QSslConfiguration::supportedCiphers());
 
-
-
+    reportFilter.setFilter(reportFilter.filter().replace("+", virtualSN));
+    //requestFilter.setFilter(requestFilter.filter().replace("+", virtualSN));
+    requestTopic = QMqttTopicName{QString("device/%1/request").arg(virtualSN)};
 
     QObject::connect(mqtt, &QMqttClient::connected, this, [this]() {
         qDebug() << "Printer" << name << "connected to MQTT broker";
@@ -88,6 +94,8 @@ void BambuLab::startConnection() {
         this->connectionStatus = true;
 
         this->mqtt->subscribe(reportFilter);
+        isReady = true;
+        emit this->ready();
     });
 
     QObject::connect(mqtt, &QMqttClient::disconnected, this, [this]() {
@@ -103,25 +111,28 @@ void BambuLab::startConnection() {
         emit messageRecieved(message, topic);
         if (this->reportFilter.match(topic)) {
             latestReportBytes = message;
-            if (!requestTopic.isValid()) {
-                QStringList topicparts = topic.name().split("/");
-                topicparts.pop_back();
-                virtualSN = QString(topicparts.back()); //Copy virtual SN of printer
-                emit setVSN(virtualSN);
-                topicparts.append("request");
-                requestTopic = QMqttTopicName(topicparts.join("/"));
-                mqtt->subscribe(requestFiler);
-                updateState();
-                //qDebug() << "LatestReport: "<<latestReport;
-            }
-        } else if (this->requestFiler.match(topic)) {
-            qDebug() << "Response recieved on topic" << topic.name() << ":" << message;
+            // if (!requestTopic.isValid()) {
+            //     // QStringList topicparts = topic.name().split("/");
+            //     // topicparts.pop_back();
+            //     //virtualSN = QString(topicparts.back()); //Copy virtual SN of printer
+            //     //emit setVSN(virtualSN);
+            //     //topicparts.append("request");
+            //     //requestTopic = QMqttTopicName(topicparts.join("/"));
+            //     //mqtt->subscribe(requestFilter);
+            //     //updateState();
+            //     //qDebug() << "LatestReport: "<<latestReport;
+            // }
+        // } else if (this->requestFilter.match(topic)) {
+        //     qDebug() << "Response recieved on topic" << topic.name() << ":" << message;
         } else {
             qDebug() << "Message received on topic" << topic.name() << ":" << message;
         }
     });
 
+    //qDebug() << reportFilter << "\n" << requestFilter;
+
     mqtt->connectToHostEncrypted(sslConfig);
+    qobject_cast<QSslSocket*>(mqtt->transport())->setPeerVerifyName(virtualSN); //Set CommonName to the serial number to match certificate
 }
 
 void BambuLab::setHostname(QString hostname) {
@@ -189,29 +200,28 @@ void BambuLab::requestPrintProject(const BambuPrintOptions &options) {
     if (!requestTopic.isValid()) return;
     QJsonObject request{
         {"print", QJsonObject {
-                              {"sequence_id", QString::number(this->sequenceId)},
-                              {"command", "project_file"},
-                              {"param", "Metadata/plate_" + QString::number(options.plateNum) + ".gcode"},
-                              {"project_id", "0"},
-                              {"profile_id", "0"},
-                              {"task_id", "0"},
-                              {"subtask_id", "0"},
-                              {"subtask_name", ""},
-                              {"timelapse", options.timelapse},
-                              {"bed_type", "auto"},
-                              {"bed_levelling", options.bedLeveling},
-                              {"flow_cali", options.flowCali},
-                              {"vibration_cali", options.vibroCali},
-                              {"layer_inspect", options.layerInspect},
-                              {"use_ams", options.useAms},
-                              {"ams_mapping", options.amsMapping},
-                              {"file", ""},
-                              {"url", "file:///mnt/"+options.storageType+"/"+options.fileName},
-                              {"md5", ""}
+            {"sequence_id", QString::number(this->sequenceId++)},
+            {"command", "project_file"},
+            {"param", "Metadata/plate_" + QString::number(options.plateNum) + ".gcode"},
+            {"project_id", "0"},
+            {"profile_id", "0"},
+            {"task_id", "0"},
+            {"subtask_id", "0"},
+            {"subtask_name", ""},
+            {"timelapse", options.timelapse},
+            {"bed_type", "auto"},
+            {"bed_levelling", options.bedLeveling},
+            {"flow_cali", options.flowCali},
+            {"vibration_cali", options.vibroCali},
+            {"layer_inspect", options.layerInspect},
+            {"use_ams", options.useAms},
+            {"ams_mapping", options.amsMapping},
+            {"file", ""},
+            {"url", "file:///mnt/"+options.storageType+"/"+options.fileName},
+            {"md5", ""}
         }}
     };
     this->mqtt->publish(requestTopic, QJsonDocument(request).toJson(QJsonDocument::Compact));
-    this->sequenceId++;
     qDebug() <<"Sending print request"<< QJsonDocument(request);
 }
 
@@ -228,4 +238,27 @@ void BambuLab::sendGCode(QString filepath) {
     // file.close();
 
     ftps->uploadFile(filepath, hostname, username, accessCode, "/"+fileInfo.fileName());
+}
+
+template<typename Func>
+void BambuLab::loadCertificate(Func callback) {
+    qDebug() << "Fetching certs for printer " + name;
+    QSslSocket* socket = new QSslSocket(this);
+    socket->setPeerVerifyMode(QSslSocket::VerifyNone);
+    connect(socket, &QSslSocket::encrypted, this, [=](){
+        qDebug() << "Got cert response for " + name;
+        QList<QSslCertificate> chain = socket->peerCertificateChain();
+        if (chain.size() >= 2) {
+            QSslCertificate cert = chain[0]; // leaf cert, not the CA
+            virtualSN = cert.subjectInfo(QSslCertificate::CommonName).at(0);
+            QSslCertificate caCert = chain[1];
+            certificate = caCert;
+            qDebug() << "Loaded Certs for " + name + " " + virtualSN;
+            (this->*callback)();
+        } else {
+            Error::handle("BambuCertFetchError", "SSL Chain for printer " + name + " too short", El::Warning);
+        }
+        socket->deleteLater();
+    });
+    socket->connectToHostEncrypted(hostname, port);
 }

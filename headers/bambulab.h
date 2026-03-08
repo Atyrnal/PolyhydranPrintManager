@@ -108,7 +108,9 @@ public:
     void setStorageType(const QString &storage);
 signals:
     void messageRecieved(const QByteArray &message, const QMqttTopicName &topic);
-    void setVSN(const QString &vSN);
+    //void setVSN(const QString &vSN);
+    void ready();
+    void certLoaded();
 protected:
     QString hostname;
     QString accessCode;
@@ -124,17 +126,24 @@ protected:
     void startPrintProject(const QString &projFilepath);
 private:
     void updateState();
-    QString virtualSN = "undefined";
+    bool isReady = false;
+    QString virtualIP;
+    QString virtualSN /*= "undefined"*/;
     quint32 sequenceId = 0;
     QMqttTopicName requestTopic;
     QByteArray latestReportBytes;
     QJsonObject latestReport;
+    quint16 bindingPortTCP = 3000;
+    quint16 bindingPortTLS = 3002;
     QMqttClient* mqtt;
     FtpsClient* ftps;
     QString storageType = "sdcard"; //"sdcard", "internal"
-    static const inline QMqttTopicFilter reportFilter {"device/+/report"};
-    static const inline QMqttTopicFilter requestFiler {"device/+/request"};
+    QSslCertificate certificate;
+    QMqttTopicFilter reportFilter {"device/+/report"};
+    //QMqttTopicFilter requestFilter {"device/+/request"};
     void sendGCode(QString filepath);
+    template<typename Func>
+    void loadCertificate(Func callback);
     friend class BambuEmulator;
     friend class PrinterManager;
     //bool testConnection();

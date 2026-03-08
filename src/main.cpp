@@ -14,6 +14,7 @@
 #include <QQuickWindow>
 #include <QFile>
 #include <QDir>
+#include <QSslSocket>
 
 //Atyrnal 10/29/2025
 
@@ -50,12 +51,11 @@ int main(int argc, char *argv[])
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    QTBackend bk(&app, &engine);
+    QTBackend bk(&app, &engine, &engine);
     engine.loadFromModule("PCMakerspace3DPKiosk", "Main"); //Load the QML Main.qml declarative ui file
 
     QObject* root = engine.rootObjects().at(0); //Get the root object (in this case the Window)
     bk.setRoot(root);
-
 
     auto config = readJsonFile(QDir(QCoreApplication::applicationDirPath()).filePath("configuration.json"), 1000000);
     if (config.isError()) {

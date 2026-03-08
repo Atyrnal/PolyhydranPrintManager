@@ -24,7 +24,13 @@ private:
     QMap<quint32, QString> SNs;
     QProcess* mosquito;
     QMqttClient* mqtt;
-    void slicerHandshake(QSslSocket* socket, const QString &vSN, BambuLab* printer);
+    static const inline QMqttTopicFilter requestFilter {"device/+/request"};
+    void startMosquitto();
+    void slicerHandshake(QTcpSocket* socket, BambuLab* printer);
+    void startUDPNotify(BambuLab* printer);
+    void startSSDPNotify(BambuLab* printer);
     Error fetchPrinterInfo(BambuLab* printer);
+private slots:
+    void slicerRequestRecieved(const QByteArray &message, const QMqttTopicName &topic);
 };
 #endif // BAMBUEMULATOR_H
