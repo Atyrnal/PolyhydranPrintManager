@@ -1,4 +1,4 @@
-#include "headers/errorhandler.hpp"
+#include "errorhandler.hpp"
 #include <QDateTime>
 
 Error Error::handle(QString t, QString m, ErrorLevel l) {

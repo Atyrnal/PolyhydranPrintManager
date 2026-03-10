@@ -14,7 +14,7 @@
 #include <QtMqtt/QMqttClient>
 #include <QJsonObject>
 #include <QJsonArray>
-#include "headers/ftpsclient.h"
+#include "ftpsclient.h"
 #include "printer.h"
 #include <QColor>
 
@@ -116,8 +116,8 @@ protected:
     QString accessCode;
     quint16 port;
     QString username;
-    QString modelId = "C12";
-    QString firmwareVer = "01.09.00.00";
+    QString modelId;
+    QString firmwareVer;
     int devCap = 1;
     bool hasAms = false;
     QList<BambuAms> amsList;

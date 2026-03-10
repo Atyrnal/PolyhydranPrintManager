@@ -5,11 +5,11 @@
 */
 
 
-#include "headers/prusa.h"
+#include "prusa.h"
 #include <QHttpMultiPart>
 #include <QFileInfo>
 #include <QJsonObject>
-#include "headers/errors.hpp"
+#include "errors.hpp"
 
 Prusa::Prusa(QObject* parent) : Printer(parent) {
     //connect(&manager, &QNetworkAccessManager::authenticationRequired, this, &PrusaLink::provideAuth);

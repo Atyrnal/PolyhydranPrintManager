@@ -6,8 +6,8 @@
 #include <QProcess>
 #include <QHttpServer>
 #include <QUdpSocket>
-#include "headers/bambulab.h"
-#include "headers/errors.hpp"
+#include "bambulab.h"
+#include "errors.hpp"
 
 class BambuEmulator : public QObject {
     Q_OBJECT

@@ -1,4 +1,4 @@
-#include "headers/ftpsclient.h"
+#include "ftpsclient.h"
 
 size_t FtpsClient::write_data(void *ptr, size_t size, size_t nmemb, void *stream) {
     return fwrite(ptr, size, nmemb, static_cast<FILE*>(stream));

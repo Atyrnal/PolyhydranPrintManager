@@ -5,14 +5,14 @@
 */
 
 
-#include "headers/octoprintemulator.h"
+#include "octoprintemulator.h"
 #include <QJsonObject>
 #include <QTcpServer>
 #include <QHttpServerRequest>
 #include <QFile>
 #include <QDir>
 #include <QHttpServerResponse>
-#include "headers/gcodeparser.h"
+#include "gcodeparser.h"
 
 OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(parent), server(), port() {
     /*server.route("/api/printer", []() {

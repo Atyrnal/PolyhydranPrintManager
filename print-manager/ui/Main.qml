@@ -19,7 +19,7 @@ ApplicationWindow { //Root app window
     visible: true
     width: 800
     height: 600
-    title: qsTr("PCM 3D Printing Kiosk")
+    title: qsTr("Polyhydran Print Manager")
     //visibility: Window.FullScreen //Make fullscreen
 
     enum AppState {

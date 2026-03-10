@@ -10,7 +10,7 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QQmlContext>
-#include "headers/qtbackend.h"
+#include "qtbackend.h"
 #include <QQuickWindow>
 #include <QFile>
 #include <QDir>
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
     QTBackend bk(&app, &engine, &engine);
-    engine.loadFromModule("PCMakerspace3DPKiosk", "Main"); //Load the QML Main.qml declarative ui file
+    engine.loadFromModule("PolyhydranPrintManager", "Main"); //Load the QML Main.qml declarative ui file
 
     QObject* root = engine.rootObjects().at(0); //Get the root object (in this case the Window)
     bk.setRoot(root);
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 
 
     QQuickWindow* window = qobject_cast<QQuickWindow*>(root); //Cast to QWindow
-    QIcon icon = QIcon("PCMakerspace3DPKiosk/resources/PC-Logo.ico");
+    QIcon icon = QIcon("PolyhydranPrintManager/resources/PC-Logo.ico");
     window->setIcon(icon); //Set window icon
 
     //runs when RFID card is scanned successfully

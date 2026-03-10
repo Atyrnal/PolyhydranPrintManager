@@ -4,17 +4,17 @@
  *
 */
 
-#include "headers/qtbackend.h"
+#include "qtbackend.h"
 #include <QProcess>
 #include <QDebug>
 #include <QUrl>
-#include "headers/gcodeparser.h"
+#include "gcodeparser.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QRegularExpression>
 #include <QQmlContext>
-#include "headers/errorhandler.hpp"
-#include "headers/ltx2aQT.h"
+#include "errorhandler.hpp"
+#include "ltx2aQT.h"
 #include <QCoreApplication>
 
 #ifndef Q_OS_WIN

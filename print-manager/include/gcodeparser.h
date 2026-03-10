@@ -12,7 +12,7 @@
 #include <QVector>
 #include <QMap>
 #include <QFileInfo>
-#include "headers/errors.hpp"
+#include "errors.hpp"
 
 /*struct PrintData {
     QString printer_settings;

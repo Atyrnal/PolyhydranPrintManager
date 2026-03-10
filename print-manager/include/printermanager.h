@@ -2,8 +2,8 @@
 #define PRINTERMANAGER_H
 
 
-#include "headers/octoprintemulator.h"
-#include "headers/bambuemulator.h"
+#include "octoprintemulator.h"
+#include "bambuemulator.h"
 
 class PrinterManager : public QObject {
     Q_OBJECT

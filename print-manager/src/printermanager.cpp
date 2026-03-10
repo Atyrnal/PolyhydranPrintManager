@@ -1,6 +1,6 @@
-#include "headers/printermanager.h"
-#include "headers/prusa.h"
-#include "headers/bambulab.h"
+#include "printermanager.h"
+#include "prusa.h"
+#include "bambulab.h"
 
 PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
 

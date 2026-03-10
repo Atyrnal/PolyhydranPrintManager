@@ -5,13 +5,13 @@
 */
 
 
-#include "headers/bambulab.h"
+#include "bambulab.h"
 #include <QFileInfo>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QSslCipher>
 #include <QSslKey>
-#include "headers/errors.hpp"
+#include "errors.hpp"
 
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}
 

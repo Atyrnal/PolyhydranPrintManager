@@ -20,8 +20,8 @@
 #include <QQmlApplicationEngine>
 #include <QSqlRecord>
 #include "printermanager.h"
-#include "headers/errors.hpp"
-#include "headers/ltx2aQT.h"
+#include "errors.hpp"
+#include "ltx2aQT.h"
 #include <QCoreApplication>
 
 

@@ -4,11 +4,11 @@
  *
 */
 
-#include "headers/ltx2aQT.h"
+#include "ltx2aQT.h"
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QDebug>
-#include "headers/errorhandler.hpp"
+#include "errorhandler.hpp"
 
 LTx2A::LTx2A(QString portName, qint32 baud) {
     scanned = QQueue<UserEntry>();

@@ -4,7 +4,7 @@
  *
 */
 
-#include "headers/gcodeparser.h"
+#include "gcodeparser.h"
 #include <QFileInfo>
 #include <QDebug>
 #include <zip.h>

@@ -1,11 +1,11 @@
-#include "headers/bambuemulator.h"
+#include "bambuemulator.h"
 
 #include <QDebug>
 #include <QCoreApplication>
 #include <QDir>
 #include <QTcpServer>
 #include <QNetworkDatagram>
-#include "headers/errors.hpp"
+#include "errors.hpp"
 #include <QTimer>
 #include <QSslServer>
 
@@ -350,7 +350,7 @@ void BambuEmulator::startSSDPNotify(BambuLab* printer) {
 }
 
 Error BambuEmulator::fetchPrinterInfo(BambuLab* printer) {
-    QSslSocket tcpSocket;
+    QTcpSocket tcpSocket;
 
     Log::write("BambuEmulator", "Fetching binding info from " + printer->name + "@" + printer->hostname + ":" + printer->bindingPortTCP);
 

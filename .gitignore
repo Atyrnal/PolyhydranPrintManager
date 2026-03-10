@@ -83,3 +83,4 @@ CMakeLists.txt.user*
 secrets.h
 *.db
 *.conf
+.cache

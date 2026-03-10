@@ -5,7 +5,7 @@
 */
 
 
-#include "headers/printer.h"
+#include "printer.h"
 
 Printer::Printer(QObject* parent) : QObject(parent) {}
 
