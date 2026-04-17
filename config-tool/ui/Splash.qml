@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import QtMultimedia
 
 ApplicationWindow {
-    id: startupWindow
+    id: splash
     visible: true
     height: 300
     width: 600
@@ -37,6 +37,24 @@ ApplicationWindow {
         width:300
         y: 50
         text: "Polyhydran"
+    }
+
+    Component.onCompleted: loader.startLoading()
+
+    QtObject {
+        id: loader
+        function startLoading() {
+            backend.load()
+        }
+    }
+
+    Connections {
+        target: backend
+        function onLoadComplete() {
+            var main = Qt.createComponent("Main.qml")
+            main.createObject(null)
+            splash.close()
+        }
     }
 
 
