@@ -1,0 +1,39 @@
+#ifndef BAMBUEMULATOR_H
+#define BAMBUEMULATOR_H
+
+#include <QObject>
+#include <QString>
+#include <QProcess>
+#include <QHttpServer>
+#include <QUdpSocket>
+#include "bambulab.h"
+#include "errors.hpp"
+
+class BambuEmulator : public QObject {
+    Q_OBJECT
+public:
+    BambuEmulator(QObject* parent = nullptr);
+    ~BambuEmulator();
+    void addPrinter(quint32 id, BambuLab* printer);
+    void removePrinter(quint32 id);
+    void closing();
+signals:
+    void jobLoaded(quint32 id, const QString &filepath, QMap<QString, QString> properties);
+private:
+    QMap<QString, BambuLab*> printers;
+    QMap<quint32, QString> SNs;
+    QMap<QString, quint32> ids;
+    QProcess* mosquito;
+    QMqttClient* mqtt;
+    static const inline QMqttTopicFilter requestFilter {"device/+/request"};
+    void startMosquitto();
+    void ftpsController(QTcpSocket* socket, BambuLab* printere);
+    void slicerHandshake(QTcpSocket* socket, BambuLab* printer);
+    void startUDPNotify(BambuLab* printer);
+    void startSSDPNotify(BambuLab* printer);
+    void recieveFile(QTcpSocket* controlSocket, BambuLab* printer);
+    Error fetchPrinterInfo(BambuLab* printer);
+private slots:
+    void slicerRequestRecieved(const QByteArray &message, const QMqttTopicName &topic);
+};
+#endif // BAMBUEMULATOR_H
