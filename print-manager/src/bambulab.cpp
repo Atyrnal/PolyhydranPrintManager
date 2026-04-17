@@ -114,8 +114,20 @@ void BambuLab::setAccessCode(QString accessCode) {
 void BambuLab::startPrint(const QString &filePath) {
     QFileInfo fInfo = QFileInfo(filePath);
     if (fInfo.fileName().endsWith(".gcode.3mf")) {
-        startPrintProject(filePath);
+        Error::handle("BambuLabPrintError", "Attempted to start project print with no options", El::Warning);
     } else if (fInfo.fileName().startsWith(".gcode")) {
+        startPrintGCode(filePath);
+    } else {
+        Error::handle("BambuLabPrintError", "File has invalid type: " + filePath, El::Warning);
+    }
+}
+
+void BambuLab::startPrint(const QString &filePath, BambuPrintOptions opt) {
+    QFileInfo fInfo = QFileInfo(filePath);
+    if (fInfo.fileName().endsWith(".gcode.3mf")) {
+        startPrintProject(filePath, opt);
+    } else if (fInfo.fileName().startsWith(".gcode")) {
+        Error::softHandle("BambuLabPrintError", "Provided print options when printing non-project gcode file", El::Debug);
         startPrintGCode(filePath);
     } else {
         Error::handle("BambuLabPrintError", "File has invalid type: " + filePath, El::Warning);
@@ -145,13 +157,13 @@ void BambuLab::startPrintGCode(const QString &fileName) {
     sendGCode(fileName);
 }
 
-void BambuLab::startPrintProject(const QString &fileName) {
+void BambuLab::startPrintProject(const QString &fileName, const BambuPrintOptions &opt) {
     if (!connectionStatus) return;
     if (!requestTopic.isValid()) return;
-    QObject::connect(ftps, &FtpsClient::finished, this, [this, &fileName](bool success, const QString &error) {
+    QObject::connect(ftps, &FtpsClient::finished, this, [this, &fileName, &opt](bool success, const QString &error) {
         if (success) {
-            BambuPrintOptions opt(QFileInfo(fileName).fileName());
-            opt.setAmsMapping(QList<qint8>{3});//TODO: Make ams mappings dynamic for prints uploaded directly, for slicer prints steal them from the slicer's mqtt request to the emulator
+            // BambuPrintOptions opt(QFileInfo(fileName).fileName());
+            //opt.setAmsMapping(QList<qint8>{3});//TODO: Make ams mappings dynamic for prints uploaded directly, for slicer prints steal them from the slicer's mqtt request to the emulator
             requestPrintProject(opt);
         } else {
             Error::handle("BambuLabFtpsError", error, El::Critical);
@@ -167,28 +179,33 @@ void BambuLab::setStorageType(const QString &storage) {
 void BambuLab::requestPrintProject(const BambuPrintOptions &options) {
     if (!connectionStatus) return;
     if (!requestTopic.isValid()) return;
+    QJsonObject parameters {
+        {"sequence_id", QString::number(this->sequenceId++)},
+        {"command", "project_file"},
+        {"param", "Metadata/plate_" + QString::number(options.plateNum) + ".gcode"},
+        {"project_id", "0"},
+        {"profile_id", "0"},
+        {"task_id", "0"},
+        {"subtask_id", "0"},
+        {"subtask_name", ""},
+        {"timelapse", options.timelapse},
+        {"bed_type", options.bedType},
+        {"bed_leveling", options.bedLeveling},
+        {"flow_cali", options.flowCali},
+        {"vibration_cali", options.vibroCali},
+        {"layer_inspect", options.layerInspect},
+        {"use_ams", options.useAms},
+        {"ams_mapping", options.amsMapping},
+        {"file", options.fileName},
+        {"url", "ftp://"+options.fileName},
+        {"md5", ""},
+        {"auto_bed_leveling",options.autoLeveling},
+        {"extrude_cali_flag", options.extrudeCali},
+        {"nozzle_offset_cali", options.nozzleCali}
+    };
+    if (options.amsMapping2.size() > 0) parameters.insert("ams_mapping2", options.amsMapping2);
     QJsonObject request{
-        {"print", QJsonObject {
-            {"sequence_id", QString::number(this->sequenceId++)},
-            {"command", "project_file"},
-            {"param", "Metadata/plate_" + QString::number(options.plateNum) + ".gcode"},
-            {"project_id", "0"},
-            {"profile_id", "0"},
-            {"task_id", "0"},
-            {"subtask_id", "0"},
-            {"subtask_name", ""},
-            {"timelapse", options.timelapse},
-            {"bed_type", "auto"},
-            {"bed_levelling", options.bedLeveling},
-            {"flow_cali", options.flowCali},
-            {"vibration_cali", options.vibroCali},
-            {"layer_inspect", options.layerInspect},
-            {"use_ams", options.useAms},
-            {"ams_mapping", options.amsMapping},
-            {"file", ""},
-            {"url", "file:///mnt/"+options.storageType+"/"+options.fileName},
-            {"md5", ""}
-        }}
+        {"print", parameters}
     };
     this->mqtt->publish(requestTopic, QJsonDocument(request).toJson(QJsonDocument::Compact));
     Log::write("BambuLabPrinter("+name+"@"+hostname+")", "Sent project print command");

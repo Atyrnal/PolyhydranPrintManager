@@ -9,6 +9,7 @@
 #include "errors.hpp"
 #include <QTimer>
 #include <QSslKey>
+#include <gcodeparser.h>
 
 BambuEmulator::BambuEmulator(QObject* parent) : QObject(parent) {
     startMosquitto();
@@ -68,7 +69,7 @@ void BambuEmulator::startMosquitto() {
 }
 
 void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqttTopicName &topic) {
-    Log::write("BambuEmulator", "Message from slicer on topic " + topic.name());
+    //Log::write("BambuEmulator", "Message from slicer on topic " + topic.name());
     if (!BambuEmulator::requestFilter.match(topic)) return;
     QJsonParseError err = QJsonParseError();
     QJsonDocument doc = QJsonDocument::fromJson(message, &err);
@@ -90,7 +91,28 @@ void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqtt
                 if (cmd != "gcode_file" && /*cmd != "gcode_line" &&*/ cmd != "project_file") {
                     printer->mqtt->publish(printer->requestTopic, QJsonDocument(msg).toJson(QJsonDocument::Compact));
                 } else {
-                    Log::write("BambuEmulator", "Print" + cmd + "request recieved from slicer:" + QJsonDocument(msg).toJson(QJsonDocument::Indented));
+                    //Log::write("BambuEmulator", "Print" + cmd + "request recieved from slicer:" + QJsonDocument(msg).toJson(QJsonDocument::Indented));
+                    if (cmd == "project_file") {
+                        BambuPrintOptions opt = BambuPrintOptions::fromMqtt(print);
+                        QString filepath = "uploaded/"+opt.fileName;
+                        auto propsEo = GCodeParser::parse3mfFile(filepath, opt.plateNum);
+                        if (propsEo.isError()) return propsEo.handle();
+                        auto props = propsEo.get();
+                        props.insert("filename", opt.fileName);
+                        printer->loadedOptions = opt;
+                        Log::write("BambuEmulator", "Recieved print project request: " + opt.fileName);
+                        emit jobLoaded(ids.value(printer->virtualSN), filepath, props);
+                    } else {
+                        QString filename = print.value("param").toString().replace("\\", "/").split("/").last();
+                        QString filepath = "uploaded/"+filename;
+                        auto propsEo = GCodeParser::parseFile(filepath);
+                        if (propsEo.isError()) return propsEo.handle();
+                        auto props = propsEo.get();
+                        props.insert("filename", filename);
+                        Log::write("BambuEmulator", "Recieved print file request: " + filename);
+                        emit jobLoaded(ids.value(printer->virtualSN), filepath, props);
+                    }
+
                 }
             } else {
                 Error::handle("BambuEmulatorUknownRequestError", QJsonDocument(msg).toJson(QJsonDocument::Indented), El::Warning);
@@ -104,7 +126,7 @@ void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqtt
 void BambuEmulator::ftpsController(QTcpSocket* socket, BambuLab* printer) {
     QByteArray data = socket->readAll();
     QString cmd = QString::fromUtf8(data).trimmed();
-    Log::write("BambuEmulatorFTPS", cmd);
+    //Log::write("BambuEmulatorFTPS", cmd);
     bool quit = false;
     if (cmd.startsWith("USER")) {
         socket->write("331 Password required\r\n");
@@ -120,7 +142,7 @@ void BambuEmulator::ftpsController(QTcpSocket* socket, BambuLab* printer) {
         socket->write("200 PBSZ=0\r\n");
     } else if (cmd.startsWith("PROT")) {
         socket->write("200 Protection level set\r\n");
-    } else if (cmd.startsWith("EASV")) {
+    } else if (cmd.startsWith("EPSV")) {
         recieveFile(socket, printer);
         socket->write(QString("229 Entering Extended Passive Mode (|||%1|)\r\n").arg(printer->ftpsPort).toUtf8());
     } else if (cmd.startsWith("PASV")) {
@@ -162,19 +184,23 @@ void BambuEmulator::recieveFile(QTcpSocket* controlSocket, BambuLab* printer) {
         auto socket = ftpsServer->nextPendingConnection();
         if (!socket) return;
         QByteArray* fileBuffer = new QByteArray();
-        Log::write("BambuEmulatorFTPS", "FTPS fileserver connection received for " + printer->name);
+        //Log::write("BambuEmulatorFTPS", "FTPS fileserver connection received for " + printer->name);
 
         connect(socket, &QSslSocket::readyRead, this, [this, socket, printer, fileBuffer]() {
             fileBuffer->append(socket->readAll());
-            Log::write("BambuEmulatorFTPS", "Received " + QString::number(fileBuffer->size()) + " bytes total");
+            //Log::write("BambuEmulatorFTPS", "Received " + QString::number(fileBuffer->size()) + " bytes total");
         });
 
-        connect(socket, &QSslSocket::disconnected, this, [socket, printer, fileBuffer, controlSocket]() {
-            Log::write("BambuEmulatorFTPS", "FTPS fileserver disconnected for " + printer->name);
+        connect(socket, &QSslSocket::disconnected, this, [socket, printer, fileBuffer, controlSocket, ftpsServer]() {
+            //Log::write("BambuEmulatorFTPS", "FTPS fileserver disconnected for " + printer->name);
             if (controlSocket == nullptr) Error("BambuEmulatorFTPSError", "Invalid pointer to control socket", El::Critical).handle();
             else controlSocket->write("226 Transfer complete\r\n");
             if (printer->filename.toLower() != "verify_job") {
-                QFile tmpgcode("gcode/" + printer->filename);
+                QDir uploadDir = QDir("uploaded");
+                if (!uploadDir.exists()) {
+                    uploadDir.mkpath(".");
+                }
+                QFile tmpgcode("uploaded/" + printer->filename);
                 if(!tmpgcode.open(QIODevice::WriteOnly)) Error("BambuEmulatorFTPSError", "Unable to save recieved gcode file", El::Critical).handle();
                 tmpgcode.write(*fileBuffer);
                 tmpgcode.close();
@@ -182,6 +208,7 @@ void BambuEmulator::recieveFile(QTcpSocket* controlSocket, BambuLab* printer) {
             }
             delete fileBuffer;
             socket->deleteLater();
+            ftpsServer->deleteLater();
         });
     });
 
@@ -252,7 +279,7 @@ void BambuEmulator::slicerHandshake(QTcpSocket* socket, BambuLab* printer) {
     socket->flush();
 
     //qDebug() << "Sent response:" << jsonDataOut;
-    Log::write("BambuEmulatorBinding", "Sent binding response to slicer for " + printer->name);
+    //Log::write("BambuEmulatorBinding", "Sent binding response to slicer for " + printer->name);
 }
 
 void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
@@ -260,6 +287,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
         disconnect(printer);
         printers.insert(printer->virtualSN, printer);
         SNs.insert(id, printer->virtualSN);
+        ids.insert(printer->virtualSN, id);
 
         Error fperr = fetchPrinterInfo(printer); //Load printer info from port 3000
         if (fperr.isError()) {
@@ -324,7 +352,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
 
         connect(bindingServer, &QTcpServer::newConnection, this, [this, bindingServer, printer]() {
             QTcpSocket* tcpSocket = bindingServer->nextPendingConnection();
-            Log::write("BambuEmulatorBinding", "TCP Connection received for " + printer->name);
+            //Log::write("BambuEmulatorBinding", "TCP Connection received for " + printer->name);
 
             connect(tcpSocket, &QTcpSocket::readyRead, this, [this, tcpSocket, printer]() {
                 slicerHandshake(tcpSocket, printer);
@@ -344,7 +372,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
             if (!socket) return;
 
 
-            Log::write("BambuEmulatorFTPS", "FTPS Connection received for " + printer->name);
+            //Log::write("BambuEmulatorFTPS", "FTPS Connection received for " + printer->name);
             socket->write("220 BambuLab FTP Service\r\n");
             socket->flush();
 
@@ -353,7 +381,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
             });
 
             connect(socket, &QSslSocket::disconnected, this, [socket, printer]() {
-                Log::write("BambuEmulatorFTPS", "FTPS Disconnected for " + printer->name);
+                //Log::write("BambuEmulatorFTPS", "FTPS Disconnected for " + printer->name);
                 socket->deleteLater();
             });
         });
@@ -373,7 +401,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
 }
 
 void BambuEmulator::startUDPNotify(BambuLab* printer) {
-    Log::write("BambuEmulator", "Starting UDP Notifications for " + printer->name);
+    //Log::write("BambuEmulator", "Starting UDP Notifications for " + printer->name);
     QUdpSocket* udp = new QUdpSocket(this);
     if (!udp->bind(QHostAddress(printer->virtualIP), printer->udpBroadcastPort, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
         Error::handle("BambuEmulatorBroadcastError", "UDP Bind error: " + udp->errorString(), El::Warning);
@@ -410,7 +438,7 @@ void BambuEmulator::startUDPNotify(BambuLab* printer) {
 }
 
 void BambuEmulator::startSSDPNotify(BambuLab* printer) {
-    Log::write("BambuEmulator", "Starting SSDP Notifications for " + printer->name);
+    //Log::write("BambuEmulator", "Starting SSDP Notifications for " + printer->name);
     QUdpSocket* udp = new QUdpSocket(this);
     if (!udp->bind(QHostAddress(printer->virtualIP), printer->ssdpPort, QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint)) {
         Error::handle("BambuEmulatorBroadcastError", "UDP Bind error: " + udp->errorString(), El::Warning);

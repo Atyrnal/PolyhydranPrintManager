@@ -141,13 +141,9 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
         }
         auto properties= propertiesEo.get();
         properties.insert("filename", originalFileName); //insert the filename into the properties
-        QVariantMap propertiesForJS; //Convert to QVariantMap for use in QML
-        for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
-            propertiesForJS.insert(it.key(), it.value());
-        }
+
 
         //Emit signals to main loop and QML
-        emit jobInfoLoaded(propertiesForJS);
         emit jobLoaded(fileInfo->absoluteFilePath(), properties);
 
         // Build JSON response
@@ -194,7 +190,6 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
         for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
             propertiesForJS.insert(it.key(), it.value());
         }
-        emit jobInfoLoaded(propertiesForJS);
         emit jobLoaded(fileInfo->absoluteFilePath(), properties);
         return QHttpServerResponse(QHttpServerResponder::StatusCode::NoContent);
     });*/
@@ -222,7 +217,6 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
         for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
             propertiesForJS.insert(it.key(), it.value());
         }
-        emit jobInfoLoaded(propertiesForJS);
         emit jobLoaded(fileInfo.absoluteFilePath(), properties);
 
         QJsonObject localFile{

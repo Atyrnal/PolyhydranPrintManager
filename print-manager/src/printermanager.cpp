@@ -73,23 +73,35 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         } else {
             if (bblEmu == nullptr) {
                 bblEmu = new BambuEmulator(parent());
+                QObject::connect(bblEmu, &BambuEmulator::jobLoaded, this, [this](quint32 id, const QString &filepath, QMap<QString, QString> properties) {
+                    properties.insert("brand", "BambuLab");
+                    properties.insert("id", QString::number(id));
+                    emit this->jobLoaded(id, filepath, properties);
+                    QVariantMap propertiesForJS; //Convert to QVariantMap for use in QML
+                    for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
+                        propertiesForJS.insert(it.key(), it.value());
+                    }
+                    emit this->jobInfoLoaded(propertiesForJS);
+                });
             }
             //sqDebug() << "adding bambu printer with id:" << id;
             bblEmu->addPrinter(id, bblp);
             return id;
         }
     }
-
     OctoprintEmulator* emu = new OctoprintEmulator(baseOctPort+id);
     octEmus.insert(id, emu);
     QObject::connect(emu, &OctoprintEmulator::jobLoaded, this, [this, id](const QString &filepath, QMap<QString, QString> properties) {
         properties.insert("brand", printers[id]->getBrand());
         properties.insert("id", QString::number(id));
         emit this->jobLoaded(id, filepath, properties);
+        QVariantMap propertiesForJS; //Convert to QVariantMap for use in QML
+        for (auto it = properties.constBegin(); it != properties.constEnd(); ++it) {
+            propertiesForJS.insert(it.key(), it.value());
+        }
+        emit this->jobInfoLoaded(propertiesForJS);
     });
-    QObject::connect(emu, &OctoprintEmulator::jobInfoLoaded, this, [this](QVariantMap properties) {
-        emit this->jobInfoLoaded(properties);
-    });
+
     return id;
 }
 
@@ -106,6 +118,10 @@ void PrinterManager::removePrinter(quint32 id) {
 void PrinterManager::startPrint(quint32 id, const QString &filepath, QJsonObject properties) {
     if (!printers.contains(id)) return;
     Printer* p = printers[id];
+    if (p->getBrand() == "BambuLab") {
+        BambuLab* bbl = dynamic_cast<BambuLab*>(p);
+        if (bbl != nullptr && filepath.endsWith(".gcode.3mf")) return bbl->startPrint(filepath, bbl->loadedOptions);
+    }
     p->startPrint(filepath);
 }
 

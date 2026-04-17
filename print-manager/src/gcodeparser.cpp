@@ -20,13 +20,13 @@ Eo<QMap<QString, QString>> GCodeParser::parseFile(QString filepath) {
     QFileInfo fileInfo = QFileInfo(filepath);
     QMap<QString, QString> output;
     if (fileInfo.fileName().toLower().endsWith(".gcode")) {
-        Log::write("GCodeParser", "parsing .gcode");
+        Log::write("GCodeParser", "Parsing .gcode file");
         output = parseGCode(readGCode(QFile(filepath)));
     } else if (fileInfo.fileName().toLower().endsWith(".bgcode")) {
-        Log::write("GCodeParser", "parsing .bgcode");
+        Log::write("GCodeParser", "Parsing .bgcode file");
         output = parseBGCode(readBGCode(QFile(filepath)));
     } else if (fileInfo.fileName().toLower().endsWith(".gcode.3mf")) {
-        Log::write("GCodeParser", "parsing .gcode.3mf");
+        Log::write("GCodeParser", "Parsing .gcode.3mf file");
         QMap<QString, QByteArray> rawPlates = extractGCode3mf(filepath);
         if (rawPlates.empty()) {
             return eop("3mfGcodeNotFoundError", "Unable to locate gcode file within: " + filepath, El::Warning);
@@ -36,6 +36,35 @@ Eo<QMap<QString, QString>> GCodeParser::parseFile(QString filepath) {
         output.insert("plateName", "plate_1");
     } else {
         return eop("GcodeInvalidFiletypeError", "File has invalid filetype: " + filepath, El::Warning);
+    }
+
+    output.insert("filename", QFileInfo(filepath).fileName());
+    return eop(output);
+}
+
+Eo<QMap<QString, QString>> GCodeParser::parse3mfFile(QString filepath, quint16 platenum) {
+    using eop = Eo<QMap<QString, QString>>;
+    if (!QFile::exists(filepath)) {
+        return eop("GcodeFileNotFoundError", "Unable to locate: " + filepath, El::Warning);
+    }
+    QFileInfo fileInfo = QFileInfo(filepath);
+    QMap<QString, QString> output;
+    if (fileInfo.fileName().toLower().endsWith(".gcode.3mf")) {
+        //Log::write("GCodeParser", "Parsing .gcode.3mf");
+        QMap<QString, QByteArray> rawPlates = extractGCode3mf(filepath);
+        if (rawPlates.empty()) {
+            return eop("3mfGcodeNotFoundError", "Unable to locate gcode file within: " + filepath, El::Warning);
+        }
+        //auto keys = rawPlates.keys();
+        //Log::write("GCodeParser", "Loaded Plates: " + keys.join(", "));
+        QByteArray plate;
+        if (rawPlates.contains(QString("plate_%1.gcode").arg(platenum))) plate = rawPlates.value(QString("plate_%1.gcode").arg(platenum));
+        else if (rawPlates.contains(QString("metadata/plate_%1.gcode").arg(platenum))) plate = rawPlates.value(QString("metadata/plate_%1.gcode").arg(platenum));
+        else return eop("GcodeParseError", "Specified plate not found: " + QString("plate_%1.gcode").arg(platenum), El::Warning);
+        output = parseGCode(readGCode(plate));
+        output.insert("plateName", QString("plate_%1").arg(platenum));
+    } else {
+        return eop("GcodeInvalidFiletypeError", "File is not gcode 3mf: " + filepath, El::Warning);
     }
 
     output.insert("filename", QFileInfo(filepath).fileName());
@@ -82,6 +111,7 @@ QMap<QString, QString> GCodeParser::parseGCode(QVector<QString> lines) {
         QString line = lines[i];
         for (int p = 0; p < GCODE_TARGETS.size(); p++) {
             if (line.startsWith("; " + GCODE_TARGETS[p] + " = ")) {
+               // Log::write("GCodeParser", line);
                 QStringList splitLine = line.split("=");
                 splitLine.pop_front();
                 QString v = splitLine.join("=").trimmed();
@@ -101,12 +131,34 @@ QMap<QString, QString> GCodeParser::parseGCode(QVector<QString> lines) {
     }
     QMap<QString, QString> output = {
         {"printer", properties[GCODE_TARGETS[2]]},
-        {"filament", properties[GCODE_TARGETS[4]].replace("\"", "")},
-        {"filamentType", properties[GCODE_TARGETS[1]]},
+        {"filamentType", properties[GCODE_TARGETS[1]].replace(";", ", ")},
         {"printSettings", properties[GCODE_TARGETS[5]]},
-        {"weight", (properties.contains(GCODE_TARGETS[0])) ? properties[GCODE_TARGETS[0]] : properties[GCODE_TARGETS[6]]},
         {"duration", properties[GCODE_TARGETS[3]]},
     };
+    QList<QPair<QString, QString>> filaments= QList<QPair<QString, QString>>();
+    auto j = ((properties.contains(GCODE_TARGETS[0])) ? properties[GCODE_TARGETS[0]] : properties[GCODE_TARGETS[6]]).split(",");
+    auto k = properties[GCODE_TARGETS[4]].replace("\"", "").split(";");
+    double totalWeight = 0.0;
+    for (int i = 0; i < min(j.length(), k.length()); i++) {
+        j[i] = j[i].trimmed();
+        k[i] = k[i].split("@").at(0).trimmed();
+        bool ok = false;
+        double weight = j[i].toDouble(&ok);
+        if (ok && weight > 0) {
+            filaments.append({k[i], j[i]+"g"});
+            totalWeight += weight;
+        }
+    }
+    QStringList filamentstr = QStringList();
+    QStringList weightstr = QStringList();
+    for (int i = 0; i < filaments.length(); i++) {
+        filamentstr.append(filaments[i].first);
+        weightstr.append(filaments[i].second);
+    }
+    output.insert("filament", filamentstr.join(", "));
+    output.insert("weight", weightstr.join(", "));
+    output.insert("filamentCount", QString::number(filamentstr.length()));
+    output.insert("totalWeight", QString::number(totalWeight)+"g");
     return output;
 }
 
@@ -156,8 +208,8 @@ QVector<QString> GCodeParser::readGCode(QFile f) {
             }
             if (isBambu) {
                 f.seek(0);
-                QByteArray firstData = f.read(LINE_COUNT * 20);
-                f.seek(LINE_COUNT*20 + 20000);
+                QByteArray firstData = f.read(LINE_COUNT * 40);
+                f.seek(LINE_COUNT*40 + 8000);
                 QByteArray secondData = f.read(LINE_COUNT * 40);
                 f.seek(f.size() - LINE_COUNT*60); //End of file
                 QByteArray endData = f.read(LINE_COUNT * 60);
@@ -172,6 +224,7 @@ QVector<QString> GCodeParser::readGCode(QFile f) {
             QByteArray data = f.read(f.size());
             plainText = QString(data);
         }
+        //Log::write("GCodeParser", plainText);
         QVector<QString> lines = plainText.split("\n");
         f.close();
         return lines;
@@ -198,8 +251,8 @@ QVector<QString> GCodeParser::readGCode(QByteArray raw) {
             }
         }
         if (isBambu) {
-            QByteArray firstData = raw.first(LINE_COUNT*20);
-            QByteArray secondData = raw.mid(LINE_COUNT*20 + 20000, LINE_COUNT*40);
+            QByteArray firstData = raw.first(LINE_COUNT*40);
+            QByteArray secondData = raw.mid(LINE_COUNT*40 + 8000, LINE_COUNT*50);
             QByteArray endData = raw.last(LINE_COUNT*60);
             plainText = QString(firstData) + "\n" + QString(secondData) + "\n" + QString(endData);
         } else {
@@ -209,6 +262,7 @@ QVector<QString> GCodeParser::readGCode(QByteArray raw) {
     } else {
         plainText = QString(raw);
     }
+    //Log::write("GCodeParser", plainText);
     return plainText.split("\n");
 }
 

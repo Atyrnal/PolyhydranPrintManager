@@ -22,6 +22,7 @@ signals:
 private:
     QMap<QString, BambuLab*> printers;
     QMap<quint32, QString> SNs;
+    QMap<QString, quint32> ids;
     QProcess* mosquito;
     QMqttClient* mqtt;
     static const inline QMqttTopicFilter requestFilter {"device/+/request"};

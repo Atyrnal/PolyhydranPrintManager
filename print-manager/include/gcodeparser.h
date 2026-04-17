@@ -27,6 +27,7 @@ class GCodeParser
 {
 public:
     static Eo<QMap<QString, QString>> parseFile(QString filepath);
+    static Eo<QMap<QString, QString>> parse3mfFile(QString filepath, quint16 platenum);
 private:
     static const int LINE_COUNT = 600;
     static const int BLINE_COUNT = 100;

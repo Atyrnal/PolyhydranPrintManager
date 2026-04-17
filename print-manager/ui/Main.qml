@@ -265,7 +265,7 @@ ApplicationWindow { //Root app window
                         function onPrintInfoLoaded(printInfo) {
                             console.log("Print has been loaded!")
                             console.log(printInfo)
-                            let op = `Filename: ${printInfo.filename}\nPrinter: ${printInfo.printer}\nFilament: ${printInfo.filamentType}\nWeight: ${printInfo.weight}g\nDuration: ${printInfo.duration}`;
+                            let op = `Filename: ${printInfo.filename}\nPrinter: ${printInfo.printer}\nFilament: ${(printInfo.hasOwnProperty("filament")) ? printInfo.filament : printInfo.filamentType}\nWeight: ${(printInfo.weight.trim().endsWith("g")) ? printInfo.weight : printInfo.weight + "g"}\nDuration: ${printInfo.duration}`;
                             if (printInfo.hasOwnProperty("printSettings")) op += `\nPrint Settings: ${printInfo.printSettings}`
                             printInfoText.text = op
                         }
@@ -276,7 +276,7 @@ ApplicationWindow { //Root app window
                         function onJobInfoLoaded(printInfo) {
                             console.log("Job has been loaded!")
                             console.log(printInfo)
-                            let op = `Filename: ${printInfo.filename}\nPrinter: ${printInfo.printer}\nFilament: ${printInfo.filamentType}\nWeight: ${printInfo.weight}g\nDuration: ${printInfo.duration}`;
+                            let op = `Filename: ${printInfo.filename}\nPrinter: ${printInfo.printer}\nFilament: ${(printInfo.hasOwnProperty("filament")) ? printInfo.filament : printInfo.filamentType}\nWeight: ${(printInfo.weight.trim().endsWith("g")) ? printInfo.weight : printInfo.weight + "g"}\nDuration: ${printInfo.duration}`;
                             if (printInfo.hasOwnProperty("printSettings")) op += `\nPrint Settings: ${printInfo.printSettings}`
                             printInfoText.text = op
 

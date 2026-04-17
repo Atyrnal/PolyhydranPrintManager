@@ -53,7 +53,7 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
 
     QObject::connect(&rfidReader, &LTx2A::cardScanned, this, [this]() { //Connect the rfidReader cardScanned event to the lambda
         if (rfidReader.hasNext()) { //If the cards scanned queue is not empty
-            QString cardid = rfidReader.getNext().id.replace("\"", "").trimmed();
+            QString cardid = rfidReader.getNext().replace("\"", "").trimmed();
             this->cardScanned(cardid);
         }
     });
@@ -211,15 +211,17 @@ void QTBackend::bringWindowToFront(DWORD pid) {
 #endif
 
 AppState QTBackend::appstate() {
-    bool err = false;
-    int prop = root->property("appstate").toInt(&err);
-    if (err) return AppState::Idle;
+    bool ok = true;
+    int prop = root->property("appstate").toInt(&ok);
+    if (!ok) {
+        Error::softHandle("QtBackendQMLError", "Appstate is not int", El::Warning);
+        return AppState::Idle;
+    }
     return static_cast<AppState>(prop);
 }
 
 
 //QML accessible functions
-
 
 Q_INVOKABLE void QTBackend::fileUploaded(const QUrl &fileUrl) {
     QString filepath = fileUrl.toLocalFile(); //get filepath from url
@@ -309,7 +311,10 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
     if (exe.isEmpty())
         exe = QStandardPaths::findExecutable("OrcaSlicer");
     if (exe.isEmpty())
-        exe = "/usr/bin/orca-slicer"; // fallback
+        exe = QStandardPaths::findExecutable("orcaslicer");
+    if (exe.isEmpty())
+        exe = "/opt/orca-slicer/bin/orca-slicer";
+        //exe = "/usr/bin/orca-slicer"; // fallback
     if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
         Log::write("QtBackend", "Launching OrcaSlicer instance");
         QProcess::startDetached(exe);
@@ -345,7 +350,8 @@ void QTBackend::jobLoaded(quint32 id, const QString &filepath, const QMap<QStrin
 }
 
 void QTBackend::cardScanned(const QString &cardid) {
-    if (appstate() != AppState::UserScan) {
+    Log::write("QtBackendSerial", "Card scanned, current state:" + QString::number(appstate()));
+    if (appstate() == AppState::UserScan) {
         currentUserID = cardid;
         Log::write("QtBackendSerial", "User card scanned: " + cardid);
 
