@@ -26,9 +26,11 @@ private:
     QMqttClient* mqtt;
     static const inline QMqttTopicFilter requestFilter {"device/+/request"};
     void startMosquitto();
+    void ftpsController(QTcpSocket* socket, BambuLab* printere);
     void slicerHandshake(QTcpSocket* socket, BambuLab* printer);
     void startUDPNotify(BambuLab* printer);
     void startSSDPNotify(BambuLab* printer);
+    void recieveFile(QTcpSocket* controlSocket, BambuLab* printer);
     Error fetchPrinterInfo(BambuLab* printer);
 private slots:
     void slicerRequestRecieved(const QByteArray &message, const QMqttTopicName &topic);
