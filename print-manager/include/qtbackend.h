@@ -104,7 +104,6 @@ public slots:
     Q_INVOKABLE void orcaButtonClicked();
     Q_INVOKABLE void helpButtonClicked();
     Q_INVOKABLE void fileUploaded(const QUrl &fileUrl);
-    Q_INVOKABLE void processCommand(const QString &command, const QString &tcltxt = "", const QString &tcctxt = "");
 };
 
 #endif // QTBACKEND_H

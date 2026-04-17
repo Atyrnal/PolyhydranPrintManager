@@ -243,46 +243,6 @@ Q_INVOKABLE void QTBackend::fileUploaded(const QUrl &fileUrl) {
     emit printLoaded(loadedPrinterId, filepath, properties);
 }
 
-Q_INVOKABLE void QTBackend::processCommand(const QString &command, const QString &tcltxt, const QString &tcctxt) { //TODO: remove this bs, making a TUI in a GUI framework is dumb. Make a seperate config tool
-    QStringList directives = command.split(" ");
-    for (int i = 0; i < directives.length(); i++) {
-        QString directive = directives[i];
-        if (directive.startsWith("\"") && !directive.endsWith("\"")) {
-            int start = i;
-            QStringList toMerge;
-            toMerge.append(directive);
-            while(++i < directives.length() && !directives[i].endsWith("\"")) {
-                toMerge.append(directives[i]);
-            }
-            if (i >= directives.length()) {
-                emit tPrint("<font color='red'>Error: expected closing quotation to match opening quotation at: " + directive + "</font>");
-                return;
-            }
-            toMerge.append(directives[i]);
-            QString merged = toMerge.join(" ");
-            directives.remove(start, i-start);
-            directives.insert(start, merged);
-        }
-    }
-    QString cmd = directives[0].toLower();
-    if (cmd == "help") {
-        emit tPrint("Command List:\n\techo - print text to console\n\texit - exit staff mode and return to user interface\n\thelp - displays the command list\n\tver - displays version information");
-    } else if (cmd == "ver" || cmd == "version") {
-        emit tPrint("PCM 3DPK Version " + version);
-    } else if (cmd == "exit" || cmd == "quit") {
-        emit setAppmode(0);
-        emit setTerminalContent("", "");
-    } else if (cmd == "echo") {
-        QString echo = directives[1];
-        if (echo.startsWith("\"") && echo.endsWith("\"")) {
-            echo = echo.slice(1, echo.length()-2);
-        }
-        emit tPrint(echo);
-    } else {
-        emit tPrint("<font color='red'>Error: unknown command '" + cmd + "'</font>");
-    }
-}
-
 Q_INVOKABLE void QTBackend::helpButtonClicked() {
 
 }
