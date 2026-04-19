@@ -7,50 +7,21 @@ qt_standard_project_setup(REQUIRES 6.8)
 qt_add_executable(appPolyhydranPrintManager
     src/main.cpp
 )
-
+file(GLOB_RECURSE QML_SOURCE_FILES   CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "ui/*.qml")
+file(GLOB_RECURSE RESOURCE_FILES     CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "resources/*")
+file(GLOB_RECURSE HEADER_FILES       CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "include/*.h" "include/*.hpp")
+file(GLOB_RECURSE CPP_SOURCE_FILES   CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "src/*.cpp")
 qt_add_qml_module(appPolyhydranPrintManager
     URI PolyhydranPrintManager
     VERSION 1.0
-    QML_FILES
-        ui/Main.qml
-        ui/RoundButtonC.qml
-        ui/IconButtonC.qml
-        ui/ScrollableLabel.qml
-    RESOURCES
-        resources/PC-LogoText.svg
-        resources/ltx2a_ledoff.svg
-        resources/ltx2a_ledon.svg
-        resources/card_filled.svg
-        resources/PC-Logo.ico
-        resources/OrcaSlicer.svg
-        resources/help.svg
-        resources/upload_file.svg
-        resources/progress_activity.svg
-        resources/JetBrainsMono-Regular.ttf
-    SOURCES
-        include/bambuemulator.h
-        src/bambuemulator.cpp
-        include/bambulab.h
-        src/bambulab.cpp
-        include/errorhandler.hpp
-        src/errorhandler.cpp
-        include/errors.hpp
-        include/ftpsclient.h
-        src/ftpsclient.cpp
-        include/gcodeparser.h
-        src/gcodeparser.cpp
-        include/ltx2aQT.h
-        src/ltx2aQT.cpp
-        include/octoprintemulator.h
-        src/octoprintemulator.cpp
-        include/printer.h
-        src/printer.cpp
-        include/printermanager.h
-        src/printermanager.cpp
-        include/prusa.h
-        src/prusa.cpp
-        include/qtbackend.h
-        src/qtbackend.cpp
+    QML_FILES  ${QML_SOURCE_FILES}
+    RESOURCES  ${RESOURCE_FILES}
+    SOURCES    ${HEADER_FILES} ${CPP_SOURCE_FILES}
+    QML_FILES ui/Idle.qml
 )
 
 qt_import_qml_plugins(appPolyhydranPrintManager)

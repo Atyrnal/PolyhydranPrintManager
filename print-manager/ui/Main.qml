@@ -103,122 +103,31 @@ ApplicationWindow { //Root app window
             anchors.fill: parent
             currentIndex: appmode
             Rectangle {
-                color: "#871C1C"
-                Image {
-                    id : pcmLogo
-                    source: "../resources/PC-LogoText.svg"
-                    height: 100
-                    sourceSize: Qt.size(409, 510)
-                    fillMode: Image.PreserveAspectFit
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.topMargin: 25
-                    anchors.leftMargin: 25
-                    visible: true
-                    opacity: 1
+                color: "#161619"
 
-                    /*MultiEffect { //Rainbow effect
-                        anchors.fill: pcmLogo
-                        source: pcmLogo
-                        colorization: 1.0 //Color overlay (on the white svg)
-                        colorizationColor: Qt.hsva(hueValue, 1.0, 1.0, 1.0)
-
-                        property real hueValue: 0
-
-                        SequentialAnimation on hueValue { //Infinite rainbow color changing animation
-                            loops: Animation.Infinite
-                            NumberAnimation {
-                                from: 0
-                                to: 1
-                                duration: 256000 //Takes 256 seconds per loop
-                            }
-                        }
-                    }*/
-                }
+                // Image {
+                //     id : polyhydranLogo
+                //     source: "../resources/StellatedPolyhedronWhite.png"
+                //     height: 64
+                //     sourceSize: Qt.size(1080, 1080)
+                //     fillMode: Image.PreserveAspectFit
+                //     anchors.left: parent.left
+                //     anchors.bottom: parent.bottom
+                //     anchors.bottomMargin: 8
+                //     anchors.leftMargin: 8
+                //     visible: true
+                //     opacity: 1
+                //     smooth: true
+                //     antialiasing: true
+                // }
 
                 StackLayout {
 
                 currentIndex: (appstate > 3) ? appstate - 1 : appstate
                 anchors.fill: parent
 
-                Item { //idleFrame container
+                Idle {
                     id: idleFrame
-
-                    Text {
-                        id: idleText
-                        anchors.centerIn: parent
-                        font.pointSize: 36
-                        color: "#fff"
-                        text: "Welcome to the\nPhysical Computing Makerspace!"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    Item {
-
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottomMargin: 100
-                        width: 630
-                        height: 50
-
-                        IconButtonC {
-                            id: orcaSlicerButton
-                            anchors.bottom: parent.bottom
-                            anchors.right: parent.right
-                            onClicked: backend.orcaButtonClicked();
-                            width: 200
-                            height: 50
-                            radius: 5
-                            color: "#871c1c"
-                            pressed_color : "#6b1616"
-                            image_source: "../resources/OrcaSlicer.svg"
-                            label_text: "Open OrcaSlicer"
-                        }
-
-                        IconButtonC {
-                            id: helpButton
-                            anchors.bottom: parent.bottom
-                            anchors.left: parent.left
-                            onClicked: {
-                                backend.helpButtonClicked();
-                                messageText.text = "Start by slicing your .obj file\nor selecting a sliced file\nThen scan your ID and follow the\nInstructions on screen to start your print";
-                                messageFrame.nextState = Main.AppState.Idle
-                                rootWindow.appstate = Main.AppState.Message
-                            }
-                            width: 200
-                            height: 50
-                            radius: 5
-                            color: "#871c1c"
-                            pressed_color : "#6b1616"
-                            image_source: "../resources/help.svg"
-                            label_text: "Help"
-                        }
-
-                        IconButtonC {
-                            id: uploadButton
-                            anchors.bottom: parent.bottom
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            onClicked: gcodeFileDialog.open()
-                            width: 200
-                            height: 50
-                            radius: 5
-                            color: "#871c1c"
-                            pressed_color : "#6b1616"
-                            label_text : "Upload GCode"
-                            image_source: "../resources/upload_file.svg"
-
-                            FileDialog {
-                                id: gcodeFileDialog
-                                title: "Select a file"
-                                nameFilters: ["GCode File (*.gcode *.bgcode *.gcode.3mf)"]
-                                onAccepted: {
-                                    rootWindow.appstate = Main.AppState.Loading
-                                    backend.fileUploaded(gcodeFileDialog.selectedFile)
-                                }
-                            }
-                        }
-                    }
                 }
 
                 Item {
