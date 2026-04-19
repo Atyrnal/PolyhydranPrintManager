@@ -15,6 +15,9 @@ file(GLOB_RECURSE HEADER_FILES       CONFIGURE_DEPENDS
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "include/*.h" "include/*.hpp")
 file(GLOB_RECURSE CPP_SOURCE_FILES   CONFIGURE_DEPENDS
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "src/*.cpp")
+set_source_files_properties(ui/Theme.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE
+)
 qt_add_qml_module(appPolyhydranPrintManager
     URI PolyhydranPrintManager
     VERSION 1.0

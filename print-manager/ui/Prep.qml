@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Controls.Material
+import PolyhydranPrintManager
 
 Item {
     anchors.fill: parent
@@ -21,7 +22,7 @@ Item {
             anchors.topMargin: 160
             font.pointSize: 36
             font.bold: true
-            color: "#fff"
+            color: Theme.text
         }
 
         Rectangle {
@@ -32,7 +33,7 @@ Item {
             color : "#161619"
             anchors.horizontalCenter: parent.horizontalCenter
             border.width: 2
-            border.color: "#fff"
+            border.color: Theme.text
             radius: 2
             Text {
                 id: printInfoText
@@ -42,7 +43,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
                 anchors.topMargin: 10
-                color: "#fff"
+                color: Theme.text
                 font.pointSize: 18
             }
         }
@@ -90,8 +91,8 @@ Item {
         height: 40
         radius: 5
         border_width: 0
-        color: "#8188cc"
-        pressed_color : "#50568a"
+        color: Theme.primary
+        pressed_color : Theme.primaryActive
         label_text: "Cancel"
     }
 
@@ -109,8 +110,8 @@ Item {
         height: 40
         radius: 5
         border_width: 0
-        color: "#8188cc"
-        pressed_color : "#50568a"
+        color: Theme.primary
+        pressed_color : Theme.primaryActive
         label_text : "Print"
     }
 }

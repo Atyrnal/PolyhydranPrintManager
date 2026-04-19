@@ -11,6 +11,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import PolyhydranPrintManager
 
 //UI declarations
 
@@ -103,7 +104,7 @@ ApplicationWindow { //Root app window
             anchors.fill: parent
             currentIndex: appmode
             Rectangle {
-                color: "#161619"
+                color: Theme.background
 
 
                 Item { //polyhydran small branding
@@ -121,7 +122,7 @@ ApplicationWindow { //Root app window
 
                     Image {
                         id : polyhydranLogo
-                        source: "../resources/StellatedPolyhedronWhite.png"
+                        source: (Theme.isDark) ? "../resources/StellatedPolyhedronWhite.png" : "../resources/StellatedPolyhedronDark.png"
                         height: 64
                         sourceSize: Qt.size(1080, 1080)
                         fillMode: Image.PreserveAspectFit
@@ -138,7 +139,7 @@ ApplicationWindow { //Root app window
                         font.family: playfair.name
                         font.pointSize: 24
                         text : "Polyhydran"
-                        color: "#ffffff"
+                        color: Theme.text
                         horizontalAlignment: Text.AlignLeft
                     }
 
@@ -148,7 +149,7 @@ ApplicationWindow { //Root app window
                         font.pointSize: 10
                         font.bold: true
                         text : "PRINT MANAGER"
-                        color: "#ffffff"
+                        color: Theme.text
                         horizontalAlignment: Text.AlignHCenter
                     }
 
@@ -189,7 +190,7 @@ ApplicationWindow { //Root app window
                         font.pointSize: 100
                         anchors.horizontalCenter: parent.horizontalCenter;
                         anchors.verticalCenter: parent.verticalCenter;
-                        color: "#ffffff"
+                        color: Theme.text
                     }
                 }
 
@@ -217,7 +218,7 @@ ApplicationWindow { //Root app window
                         font.pointSize: 24
                         anchors.top: spinnyThing.bottom
                         anchors.topMargin: 15
-                        color: "#fff"
+                        color: Theme.text
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
                 }

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
+import PolyhydranPrintManager
 
 Item {
     property int nextState: Main.AppState.Idle
@@ -17,7 +18,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter;
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        color: "#fff"
+        color: Theme.text
     }
 
     Connections {
@@ -42,8 +43,8 @@ Item {
         width: 160
         height: 40
         radius: 5
-        color: "#8188cc"
-        pressed_color : "#50568a"
+        color: Theme.primary
+        pressed_color : Theme.primaryActive
         border_width: 0
         label_text: "OK"
 
@@ -63,8 +64,8 @@ Item {
         width: 160
         height: 40
         radius: 5
-        color: "#8188cc"
-        pressed_color : "#50568a"
+        color: Theme.primary
+        pressed_color : Theme.primaryActive
         border_width: 0
         label_text: "Cancel"
     }

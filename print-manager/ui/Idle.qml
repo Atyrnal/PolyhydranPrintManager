@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import PolyhydranPrintManager
 
 Item { //idleFrame container
 
@@ -31,7 +32,7 @@ Item { //idleFrame container
                     height: childrenRect.height
                     Image {
                         id : polyhydranLogo2
-                        source: "../resources/StellatedPolyhedronWhite.png"
+                        source: (Theme.isDark) ? "../resources/StellatedPolyhedronWhite.png" : "../resources/StellatedPolyhedronDark.png"
                         height: 96
                         sourceSize: Qt.size(1080, 1080)
                         fillMode: Image.PreserveAspectFit
@@ -52,7 +53,7 @@ Item { //idleFrame container
                         font.family: playfair.name
                         font.pointSize: 32
                         text : "Polyhydran"
-                        color: "#ffffff"
+                        color: Theme.text
                         horizontalAlignment: Text.AlignLeft
                     }
 
@@ -62,7 +63,7 @@ Item { //idleFrame container
                         font.pointSize: 14
                         font.bold: true
                         text : "PRINT MANAGER"
-                        color: "#ffffff"
+                        color: Theme.text
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -70,7 +71,7 @@ Item { //idleFrame container
             Rectangle {
                 width: 2
                 height: parent.height/3
-                color: "#ffffff"
+                color: Theme.text
             }
 
             Item { //Customer branding
@@ -137,7 +138,7 @@ Item { //idleFrame container
         id: idleText
         anchors.centerIn: parent
         font.pointSize: 30
-        color: "#fff"
+        color: Theme.text
         text: "Welcome to the\nPhysical Computing Makerspace!"
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
@@ -159,8 +160,8 @@ Item { //idleFrame container
             width: 200
             height: 50
             radius: 5
-            color: "#8188cc"
-            pressed_color : "#50568a"
+            color: Theme.primary
+            pressed_color : Theme.primaryActive
             border_width: 0
             image_source: "../resources/OrcaSlicer.svg"
             label_text: "Open OrcaSlicer"
@@ -179,8 +180,8 @@ Item { //idleFrame container
             height: 50
             radius: 5
             border_width: 0
-            color: "#8188cc"
-            pressed_color : "#50568a"
+            color: Theme.primary
+            pressed_color : Theme.primaryActive
             image_source: "../resources/help.svg"
             label_text: "Help"
         }
@@ -194,8 +195,8 @@ Item { //idleFrame container
             height: 50
             radius: 5
             border_width: 0
-            color: "#8188cc"
-            pressed_color : "#50568a"
+            color: Theme.primary
+            pressed_color : Theme.primaryActive
             label_text : "Upload GCode"
             image_source: "../resources/upload_file.svg"
 
