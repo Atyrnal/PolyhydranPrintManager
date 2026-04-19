@@ -21,7 +21,6 @@ qt_add_qml_module(appPolyhydranPrintManager
     QML_FILES  ${QML_SOURCE_FILES}
     RESOURCES  ${RESOURCE_FILES}
     SOURCES    ${HEADER_FILES} ${CPP_SOURCE_FILES}
-    QML_FILES ui/Idle.qml
 )
 
 qt_import_qml_plugins(appPolyhydranPrintManager)

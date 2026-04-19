@@ -105,21 +105,54 @@ ApplicationWindow { //Root app window
             Rectangle {
                 color: "#161619"
 
-                // Image {
-                //     id : polyhydranLogo
-                //     source: "../resources/StellatedPolyhedronWhite.png"
-                //     height: 64
-                //     sourceSize: Qt.size(1080, 1080)
-                //     fillMode: Image.PreserveAspectFit
-                //     anchors.left: parent.left
-                //     anchors.bottom: parent.bottom
-                //     anchors.bottomMargin: 8
-                //     anchors.leftMargin: 8
-                //     visible: true
-                //     opacity: 1
-                //     smooth: true
-                //     antialiasing: true
-                // }
+
+                Item { //polyhydran small branding
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.topMargin: 15
+                    anchors.leftMargin: 15
+                    height: childrenRect.height
+                    width: childrenRect.width
+                    visible: rootWindow.appstate !== Main.AppState.Idle
+                    FontLoader {
+                        id: playfair
+                        source: "../resources/PlayfairDisplay-Regular.ttf"
+                    }
+
+                    Image {
+                        id : polyhydranLogo
+                        source: "../resources/StellatedPolyhedronWhite.png"
+                        height: 64
+                        sourceSize: Qt.size(1080, 1080)
+                        fillMode: Image.PreserveAspectFit
+                        opacity: 1
+                        smooth: true
+                        antialiasing: true
+                    }
+                    Text {
+                        id: polyhydranLabel
+                        anchors.left: polyhydranLogo.right
+                        anchors.leftMargin: 5
+                        anchors.verticalCenter: polyhydranLogo.verticalCenter
+                        anchors.verticalCenterOffset: -12
+                        font.family: playfair.name
+                        font.pointSize: 24
+                        text : "Polyhydran"
+                        color: "#ffffff"
+                        horizontalAlignment: Text.AlignLeft
+                    }
+
+                    Text {
+                        anchors.top: polyhydranLabel.bottom
+                        anchors.horizontalCenter: polyhydranLabel.horizontalCenter
+                        font.pointSize: 10
+                        font.bold: true
+                        text : "PRINT MANAGER"
+                        color: "#ffffff"
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                }
 
                 StackLayout {
 
@@ -128,265 +161,23 @@ ApplicationWindow { //Root app window
 
                 Idle {
                     id: idleFrame
+                    showMessage: function(message, nextstate) {
+                        messageFrame.showMessage(message, nextstate)
+                        rootWindow.appstate = Main.AppState.Message
+                    }
                 }
 
-                Item {
+                Prep {
                     id: prepFrame
-
-                    Text {
-                        id: prepLabel
-                        text: "Print Information"
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        anchors.horizontalCenter: parent.horizontalCenter;
-                        anchors.top: parent.top
-                        anchors.topMargin: 160
-                        font.pointSize: 36
-                        font.bold: true
-                        color: "#fff"
-                    }
-
-                    Rectangle {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.top: prepLabel.bottom
-                        anchors.topMargin: 20
-                        width: printInfoText.implicitWidth + 20
-                        height: printInfoText.implicitHeight + 20
-                        color : "#871C1C"
-                        border.width: 2
-                        border.color: "#fff"
-                        radius: 2
-                        Text {
-                            id: printInfoText
-                            text: "No print information found"
-                            horizontalAlignment: Text.AlignLeft
-                            verticalAlignment: Text.AlignVCenter
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            anchors.top: parent.top
-                            anchors.topMargin: 10
-                            color: "#fff"
-                            font.pointSize: 18
-                        }
-                    }
-
-                    Connections {
-                        target: backend
-                        function onPrintInfoLoaded(printInfo) {
-                            console.log("Print has been loaded!")
-                            console.log(printInfo)
-                            let op = `Filename: ${printInfo.filename}\nPrinter: ${printInfo.printer}\nFilament: ${(printInfo.hasOwnProperty("filament")) ? printInfo.filament : printInfo.filamentType}\nWeight: ${(printInfo.weight.trim().endsWith("g")) ? printInfo.weight : printInfo.weight + "g"}\nDuration: ${printInfo.duration}`;
-                            if (printInfo.hasOwnProperty("printSettings")) op += `\nPrint Settings: ${printInfo.printSettings}`
-                            printInfoText.text = op
-                        }
-                    }
-
-                    Connections {
-                        target: printermanager
-                        function onJobInfoLoaded(printInfo) {
-                            console.log("Job has been loaded!")
-                            console.log(printInfo)
-                            let op = `Filename: ${printInfo.filename}\nPrinter: ${printInfo.printer}\nFilament: ${(printInfo.hasOwnProperty("filament")) ? printInfo.filament : printInfo.filamentType}\nWeight: ${(printInfo.weight.trim().endsWith("g")) ? printInfo.weight : printInfo.weight + "g"}\nDuration: ${printInfo.duration}`;
-                            if (printInfo.hasOwnProperty("printSettings")) op += `\nPrint Settings: ${printInfo.printSettings}`
-                            printInfoText.text = op
-
-                            rootWindow.flags |= Qt.WindowStaysOnTopHint
-                            rootWindow.show()
-                            rootWindow.raise()
-                            rootWindow.requestActivate()
-                            rootWindow.flags &= ~Qt.WindowStaysOnTopHint
-                        }
-                    }
-
-                    RoundButtonC {
-                        id: cancelPrepButton
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.bottomMargin: 10
-                        onClicked: {
-                            rootWindow.appstate = Main.AppState.Idle
-                            printInfoText.text = "No print information found"
-                        }
-                        width: 160
-                        height: 40
-                        radius: 5
-                        color: "#871c1c"
-                        pressed_color : "#6b1616"
-                        label_text: "Cancel"
-                    }
-
-                    RoundButtonC {
-                        id: beginPrintButton
-                        anchors.bottom: parent.bottom
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.bottomMargin: 10
-                        onClicked: {
-                            rootWindow.appstate = Main.AppState.UserScan
-                            printInfoText.text = "No print information found"
-                        }
-                        width: 160
-                        height: 40
-                        radius: 5
-                        color: "#871c1c"
-                        pressed_color : "#6b1616"
-                        label_text : "Print"
-                    }
                 }
 
-                Item {
+                Message {
                     id: messageFrame
-                    property int nextState: Main.AppState.Idle
-
-                    Text {
-                        id: messageText
-                        text: "Unknown Error"
-                        font.pointSize: 24
-                        anchors.horizontalCenter: parent.horizontalCenter;
-                        anchors.verticalCenter: parent.verticalCenter;
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        color: "#fff"
-                    }
-
-                    Connections {
-                        target: backend
-                        function onMessageReq(msg, btnText, newState) {
-                            messageText.text = msg
-                            acceptMessageButton.text = btnText
-                            messageFrame.nextState = newState
-                        }
-                    }
-
-                    RoundButtonC {
-                        id: acceptMessageButton
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.bottomMargin: 50
-                        onClicked: {
-                            rootWindow.appstate = messageFrame.nextState
-                            messageText.text = "Unknown Error"
-                            messageFrame.nextState = Main.AppState.Idle
-                        }
-                        width: 160
-                        height: 40
-                        radius: 5
-                        color: "#871c1c"
-                        pressed_color : "#6b1616"
-                        label_text: "OK"
-
-                    }
-
-                    RoundButtonC {
-                        id: cancelMessageButton
-                        visible: parent.nextState != Main.AppState.Idle
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.bottomMargin: 10
-                        onClicked: {
-                            rootWindow.appstate = Main.AppState.Idle
-                            message.text = "Unknown Error"
-                        }
-                        width: 160
-                        height: 40
-                        radius: 5
-                        color: "#871c1c"
-                        pressed_color : "#6b1616"
-                        label_text: "Cancel"
-                    }
                 }
 
-                Item { //scanFrame container
+                Scan {
                     id: scanFrame
-
-                    Image {
-                        id: ltx2a
-                        source: "../resources/ltx2a_ledoff.svg" //image source relative to Main.qml (image files must be explicitly included in CMakeLists.txt)
-                        height: 300
-                        fillMode: Image.PreserveAspectFit
-                        anchors.left: parent.left
-                        anchors.leftMargin: 100
-                        anchors.top: parent.top
-                        anchors.topMargin: 165
-                    }
-
-                    Image {
-                        id: card
-                        source: "../resources/card_filled.svg"
-                        height: 150
-                        fillMode: Image.PreserveAspectFit
-                        anchors.right: parent.right
-                        anchors.rightMargin: 150 + 235*offset
-                        anchors.top: parent.top
-                        anchors.topMargin: 260
-                        property real offset: 0
-
-                        SequentialAnimation on offset { //Animate the card moving and LTx2A lighting up
-                            loops: Animation.Infinite
-                            NumberAnimation { //Animate the offset (and therefore the horizontal position of card)
-                                from: 0;
-                                to: 1;
-                                duration: 1000;
-                                easing.type: Easing.InOutCubic;
-                                easing.amplitude: 1;
-                                easing.period: 1.0;
-                            }
-                            ScriptAction {
-                                script: ltx2a.source = "../resources/ltx2a_ledon.svg" //Change image of LTx2A
-                            }
-                            NumberAnimation { //Do nothing for 1 seconds
-                                from: 1;
-                                to : 1;
-                                duration: 1000;
-                            }
-                            ScriptAction {
-                                script: ltx2a.source = "../resources/ltx2a_ledoff.svg"
-                            }
-                            NumberAnimation { //Animate card back to starting pos
-                                from: 1;
-                                to: 0;
-                                duration: 1000;
-                                easing.type: Easing.InOutCubic
-                                easing.amplitude: 1;
-                                easing.period: 1.0;
-                            }
-                            NumberAnimation { //Do nothing for 2 seconds
-                                from: 0;
-                                to : 0;
-                                duration: 2000;
-                            }
-                        }
-                    }
-
-                    Text {
-                        id: tapText
-                        text: (rootWindow.appstate == Main.AppState.UserScan) ? "Tap your ID or UCard" : "Tap Staff Card"
-                        font.pointSize: 40
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 20
-                        anchors.right: parent.right
-                        anchors.rightMargin: 50
-                        color: "#ffffff"
-                    }
-
-                    RoundButtonC {
-                        id: cancelScanButton
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.leftMargin: 10
-                        anchors.bottomMargin: 10
-                        onClicked: {
-                            rootWindow.appstate = Main.AppState.Idle
-                            printInfoText.text = "No print information found"
-                        }
-                        width: 160
-                        height: 40
-                        radius: 5
-                        color : "#871c1c"
-                        pressed_color : "#6b1616"
-                        label_text: "Cancel"
-                    }
+                    isStaff: rootWindow.appstate === Main.AppState.StaffScan
                 }
 
                 Item {

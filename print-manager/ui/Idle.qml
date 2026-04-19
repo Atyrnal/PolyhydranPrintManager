@@ -6,6 +6,8 @@ import QtQuick.Layouts
 
 Item { //idleFrame container
 
+    property var showMessage: function(message, nextState) {}
+
     FontLoader {
         id: playfair
         source: "../resources/PlayfairDisplay-Regular.ttf"
@@ -158,8 +160,8 @@ Item { //idleFrame container
             height: 50
             radius: 5
             color: "#8188cc"
-            border_width: 0
             pressed_color : "#50568a"
+            border_width: 0
             image_source: "../resources/OrcaSlicer.svg"
             label_text: "Open OrcaSlicer"
         }
@@ -170,9 +172,8 @@ Item { //idleFrame container
             anchors.left: parent.left
             onClicked: {
                 backend.helpButtonClicked();
-                messageText.text = "Start by slicing your .obj file\nor selecting a sliced file\nThen scan your ID and follow the\nInstructions on screen to start your print";
-                messageFrame.nextState = Main.AppState.Idle
-                rootWindow.appstate = Main.AppState.Message
+                showMessage("Start by slicing your .obj file\nor selecting a sliced file\nThen scan your ID and follow the\nInstructions on screen to start your print", Main.AppState.Idle)
+
             }
             width: 200
             height: 50
