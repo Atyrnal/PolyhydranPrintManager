@@ -69,47 +69,7 @@ int main(int argc, char *argv[])
     QIcon icon = QIcon("PolyhydranPrintManager/resources/PC-Logo.ico");
     window->setIcon(icon); //Set window icon
 
-    //runs when RFID card is scanned successfully
-
-    bk.queryDatabase("DROP TABLE users"); //Demo stuff
-
-    bk.queryDatabase("CREATE TABLE IF NOT EXISTS users (" //Demo Stuff
-                    "id VARCHAR(50) PRIMARY KEY, "
-                    "firstName VARCHAR(50), "
-                    "lastName VARCHAR(50), "
-                    "email VARCHAR(80), "
-                    "umass BOOLEAN, "
-                    "cics BOOLEAN, "
-                    "trainingCompleted BOOLEAN, "
-                    "authLevel SMALLINT, "
-                    "printsStarted INT, "
-                    "filamentUsedGrams DOUBLE, "
-                    "printHours DOUBLE)"
-                     ).handle();
-
-    // bk.queryDatabase("UPDATE users SET authLevel = 2 WHERE id = :id;", {{":id", "09936544703440683676"}}).softHandle();
-    //Demo Stuff
-
-    bk.queryDatabase("INSERT INTO users (id, firstName, lastName, email, umass, cics, trainingCompleted, authLevel, printsStarted, filamentUsedGrams, printHours) "
-                     "VALUES ('09936544703440683676', 'Antony', 'Rinaldi', 'ajrinaldi@umass.edu', :um, :cs, :tc, :al, 0, 0.0, 0.0);", {
-                        {":um", true},
-                        {":cs", true},
-                        {":tc", true},
-                        {":al", 2}
-                     }).handle();
-
-    //Create second user for demo
-    bk.queryDatabase("INSERT INTO users (id, firstName, lastName, email, umass, cics, trainingCompleted, authLevel, printsStarted, filamentUsedGrams, printHours) "
-                       "VALUES ('', 'Judge', 'Judy', 'judge@judy.com', :um, :cs, :tc, :al, 0, 0.0, 0.0);", {
-                      {":um", true},
-                      {":cs", true},
-                      {":tc", false},
-                      {":al", 0}
-                     }).handle();
-
-    // auto result = bk.queryDatabase("SELECT firstName, lastName FROM users WHERE id = :id LIMIT 1", {{":id", "09936544703440683676000"}});
-    // qDebug() << result;
-    // result.softHandle();
-
     return app.exec(); //run the app
 }
+
+//sudo setcap 'cap_net_bind_service=+ep' ./appPolyhydranPrintManager

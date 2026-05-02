@@ -23,6 +23,7 @@
 #include "errors.hpp"
 #include "ltx2aQT.h"
 #include <QCoreApplication>
+#include "airtable.h"
 
 
 enum AppState {
@@ -33,16 +34,6 @@ enum AppState {
     StaffScan,
     Printing,
     Loading
-};
-
-struct User {
-    QString id;
-    QString firstname;
-    QString lastname;
-    QString email;
-    bool isUmass = 0;
-    bool isCics = 0;
-    bool isTrained = 0;
 };
 
 struct Staff : public User {
@@ -57,14 +48,15 @@ public:
     void loadConfig(QJsonObject cfg);
     void showMessage(QString message, QString acceptText="OK", int redirectState = 0);
     void cardScanned(const QString &id);
-    Error queryDatabase(const QString &query);
-    Eo<QMap<QString, QVariant>> queryDatabase(const QString &query, const QMap<QString, QVariant> &values);
-    Eo<QList<QMap<QString, QVariant>>> queryDatabaseMultirow(const QString &query, const QMap<QString, QVariant> &values);
+    // Error queryDatabase(const QString &query);
+    // Eo<QMap<QString, QVariant>> queryDatabase(const QString &query, const QMap<QString, QVariant> &values);
+    // Eo<QList<QMap<QString, QVariant>>> queryDatabaseMultirow(const QString &query, const QMap<QString, QVariant> &values);
 protected:
     QString version = "0.3.3-alpha";
     QJsonObject config;
     //Services
-    QSqlDatabase db;
+    //QSqlDatabase db;
+    AirtableBase* airtable;
     PrinterManager* pm;
     LTx2A rfidReader;
     //QML stuff
@@ -92,8 +84,6 @@ signals:
     void printLoaded(quint32 id, const QString &gcodeFilepath, const QMap<QString, QString> &printInfo);
     void printInfoLoaded(const QVariantMap &printInfo);
     void messageReq(const QString &message, const QString &buttonText, const int &redirectState);
-    void setTerminalUser(const QString& firstname, quint8 authlevel);
-    void setTerminalContent(const QString &ltext, const QString &rtext);
     void setAppmode(quint8 mode);
     void setAppstate(quint8 state);
     void tPrint(const QString &newtext);

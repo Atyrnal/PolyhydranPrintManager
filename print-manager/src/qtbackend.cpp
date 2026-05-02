@@ -27,12 +27,6 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
 
     rfidReader.start(); //Initialize the RFID reader
     QObject::connect(app, &QCoreApplication::aboutToQuit, &rfidReader, &LTx2A::stop); //Connect the aboutToQuit app event to the rfidReader's stop function
-    db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName("kioskdb.db");
-
-    if (!db.open()) { //Ensure DB connection
-        Error::handle("DatabaseConnectionError", "Unable to open database", El::Fatal); //Should exit program
-    }
 
     pm = new PrinterManager(parent);
 
@@ -65,79 +59,6 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
 
 
 //Utility functions
-
-Error QTBackend::queryDatabase(const QString &query) {
-    QSqlQuery q; //Create query
-    q.prepare(query); //Prepare query
-    if(q.exec()) { //execute the query and return result
-        return Error::None();
-    } else {
-        return Error("DatabaseQueryError", q.lastError().text(), El::Warning);
-    }
-}
-
-Eo<QMap<QString, QVariant>> QTBackend::queryDatabase(const QString &query, const QMap<QString, QVariant> &values) {
-    using eop = Eo<QMap<QString, QVariant>>;
-    QSqlQuery q; //Create query
-    q.prepare(query); //Prepare query
-    for (auto it = values.constBegin(); it != values.constEnd(); ++it) { //insert values (parameterized to prevent sql injection vulnerability)
-        q.bindValue((it.key().startsWith(":")) ? it.key() : ":" + it.key(), it.value());
-    }
-
-    QList bound = q.boundValues();
-    for (auto it = bound.constBegin(); it != bound.constEnd(); ++it) {
-        if (!it->isValid()) {
-            return eop("DatabaseQueryBindError", "Failed to bind values", El::Warning);
-        }
-    }
-    bool success = q.exec(); //execute the query
-    if (!success || !q.isActive()) {
-        return eop("DatabaseQueryError", q.lastError().text(), El::Warning);
-    }
-
-    if (!q.next() || !q.isValid()) {
-        return eop("DatabaseQueryError", "No valid record", El::Debug);
-    }
-
-    QMap<QString, QVariant> output;
-    QSqlRecord rec = q.record();
-    for (int i = 0; i < rec.count(); i++) {
-        output.insert(rec.fieldName(i), rec.value(i));
-    }
-
-    return eop(output);
-}
-
-Eo<QList<QMap<QString, QVariant>>> QTBackend::queryDatabaseMultirow(const QString &query, const QMap<QString, QVariant> &values) {
-    using eop = Eo<QList<QMap<QString, QVariant>>>;
-    QSqlQuery q; //Create query
-    q.prepare(query); //Prepare query
-    for (auto it = values.constBegin(); it != values.constEnd(); ++it) { //insert values (parameterized to prevent sql injection vulnerability)
-        q.bindValue((it.key().startsWith(":")) ? it.key() : ":" + it.key(), it.value());
-    }
-
-    QList bound = q.boundValues();
-    for (auto it = bound.constBegin(); it != bound.constEnd(); ++it) {
-        if (!it->isValid()) {
-            return eop("DatabaseQueryBindError", "Failed to bind values", El::Trivial);
-        }
-    }
-    bool success = q.exec(); //execute the query
-    if (!success || !q.isActive() || !q.isValid()) {
-        return eop("DatabaseQueryError", q.lastError().text(), El::Warning);
-    }
-
-    QList<QMap<QString, QVariant>> output;
-    while (q.next()) {
-        QSqlRecord rec = q.record();
-        QMap<QString, QVariant> r;
-        for (int i = 0; i < rec.count(); i++) {
-            r.insert(rec.fieldName(i), rec.value(i));
-        }
-        output.append(r);
-    }
-    return eop(output);
-}
 
 double QTBackend::parseDuration(const QString &durationString) {
     //Regex pattern to extract numbers from string
@@ -296,6 +217,11 @@ void QTBackend::setRoot(QObject* r) {
 void QTBackend::loadConfig(QJsonObject cfg) {
     config = cfg;
     pm->loadConfig(cfg);
+    //TODO: Implement some sort of abstraction to allow program to work with any database
+    if (!config.contains("airtable") || !config.value("airtable").isObject()) return Error("ConfigError", "Missing Airtable Credentials", El::Fatal).handle();
+    QJsonObject airtablec = config.value("airtable").toObject();
+    if (!airtablec.contains("hostname") || !airtablec.contains("key") || !airtablec.contains("base") || !airtablec.value("hostname").isString() || !airtablec.value("key").isString() || !airtablec.value("base").isString()) return Error("ConfigError", "Missing Airtable Credentials", El::Fatal).handle();
+    airtable = new AirtableBase(airtablec.value("hostname").toString(), airtablec.value("key").toString(), airtablec.value("base").toString(), this);
 }
 
 void QTBackend::showMessage(QString message, QString acceptText, int redirectState) {
@@ -315,104 +241,189 @@ void QTBackend::cardScanned(const QString &cardid) {
     if (appstate() == AppState::UserScan) {
         currentUserID = cardid;
         Log::write("QtBackendSerial", "User card scanned: " + cardid);
+        root->setProperty("appstate", AppState::Loading);
+        airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(currentUserID), [=](Eo<QVariantMap> recordeo){
+            if (recordeo.isError()) {
+                if (recordeo.errorLevel() <= El::Trivial) {
+                    recordeo.softHandle();
+                    return showMessage("Your account is not Registered\nPlease Register at the Check-In Kiosk");
+                } else {
+                    return recordeo.handle();
+                }
+            }
+            QVariantMap recordFields = recordeo.get().value("fields").toMap(); //Could need toJsonObject instead?
+            bool isStaff = recordFields.value("Staff", false).toBool();
+            QString cicsAff = recordFields.value("Affiliation to CICS", "").toString();
+            bool isCICS = isStaff || cicsAff == "CICS Student" || cicsAff == "CICS Faculty or Staff";
+            bool training = isStaff || recordFields.value("Certificates", QList<QString>()).toList().contains("recY34WO6fex1KMxO"); //Need to implement some form of join or something idek
 
-        //Get user info
-        auto result = queryDatabase("SELECT cics, trainingCompleted, authLevel FROM users WHERE id = :id LIMIT 1", {{":id", cardid}});
-        if (result.isError()) {
-            ErrorHandler::softHandle(result);
-            return showMessage("Your account is not Registered\nPlease Register at the Check-In Kiosk");
-        }
-        QMap<QString, QVariant> response = result.get();
-        bool isCICS = response.value("cics").toBool();
-        bool training = response.value("trainingCompleted").toBool();
-        int authLevel = response.value("authLevel").toInt();
+            double printDuration = parseDuration(loadedPrintInfo["duration"]);
 
-        //Calculate printDuration
-        double printDuration = parseDuration(loadedPrintInfo["duration"]);
-
-        //Print verification / authorization Logic
-        if (authLevel < 1) { //0 is normal, 1 is staff, 2 is system admin, 3 is supervisor
-
-            //ensure all qualifications are met, show feedback message if not;
             if (!isCICS) return showMessage("Sorry, but only CICS Students\nMay print at the Physical Computing Makerspace", "I Understand");
             if (!training) return showMessage("Please ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::StaffScan);
             //qDebug() << printDuration;
-            if (printDuration > 6.0) return showMessage("Prints cannot be longer than 6 hours\nPlease split up your print and try again");
-        }
+            if (!isStaff && printDuration > 6.0) return showMessage("Prints cannot be longer than 6 hours\nPlease split up your print and try again");
+
+            showMessage("Printing now!");
+            QVariantMap printLogInfo = {
+                {"User ID", currentUserID},
+                {"Printer", pm->getPrinter(loadedPrinterId)->getName()},
+                {"Printer Model", pm->getPrinter(loadedPrinterId)->getModel()},
+                {"Weight", loadedPrintInfo["weight"].left(loadedPrintInfo["weight"].size()-1).toDouble()}, //Remove the g and convert to double
+                {"Duration", printDuration*3600},
+                {"Filament Type", (loadedPrintInfo.contains("filament") && loadedPrintInfo["filament"] != "") ? loadedPrintInfo["filament"] : loadedPrintInfo["filamentType"]}/*,
+                {"Filename", loadedPrintInfo["filename"]}*/
+            };
+            airtable->table("Print Log")->createRecord(printLogInfo);
+            pm->startPrint(loadedPrinterId, loadedPrintFilepath);
+        });
     } else if (appstate() == AppState::StaffScan) {
         //Staff scan to confirm a user has completed 3D Printing training
 
         //Get staff info
 
-        auto result = queryDatabase("SELECT authLevel FROM users WHERE id = :id LIMIT 1", {{":id", cardid}});
-        if (result.isError()) {
-            ErrorHandler::softHandle(result);
-            return showMessage("This user is not Registered\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::StaffScan);
-        }
-        int authLevel = result.get().value("authLevel").toInt();
+        // auto result = queryDatabase("SELECT authLevel FROM users WHERE id = :id LIMIT 1", {{":id", cardid}});
+        // if (result.isError()) {
+        //     ErrorHandler::softHandle(result);
+        //     return showMessage("This user is not Registered\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::StaffScan);
+        // }
+        // int authLevel = result.get().value("authLevel").toInt();
 
-        //Check that the user is staff
-        if (authLevel < 1) return showMessage("This user is not Staff\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::StaffScan);
+        // //Check that the user is staff
+        // if (authLevel < 1) return showMessage("This user is not Staff\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::StaffScan);
 
         //Update user so save their 3d printing status
 
-        auto result2 = queryDatabase("UPDATE users SET trainingCompleted = 1 WHERE id = :id; LIMIT 1", {{":id", currentUserID}});
-        if (result2.isError()) return ErrorHandler::handle(result2);
+        // auto result2 = queryDatabase("UPDATE users SET trainingCompleted = 1 WHERE id = :id; LIMIT 1", {{":id", currentUserID}});
+        // if (result2.isError()) return ErrorHandler::handle(result2);
 
         //Final print check
-         double printDuration = parseDuration(loadedPrintInfo["duration"]);
+        double printDuration = parseDuration(loadedPrintInfo["duration"]);
         if (printDuration > 6.0) return showMessage("Prints cannot be longer than 6 hours\nPlease split up your print and try again");
+        showMessage("Printing now!");
+        pm->startPrint(loadedPrinterId, loadedPrintFilepath);
     } else return; //If we're not in one of the scan states, ignore the card scan
 
     //This code executes when a print is verified and authorized
-    showMessage("Printing now!"); //show printing message
+     //show printing message
 
     //Update user print statistics
 
-    auto response = queryDatabase("SELECT printsStarted, filamentUsedGrams, printHours FROM users WHERE id = :id LIMIT 1", {{":id", currentUserID}});
-    if (response.isError()) {
-        ErrorHandler::softHandle(response);
-    } else {
+    // auto response = queryDatabase("SELECT printsStarted, filamentUsedGrams, printHours FROM users WHERE id = :id LIMIT 1", {{":id", currentUserID}});
+    // if (response.isError()) {
+    //     ErrorHandler::softHandle(response);
+    // } else {
 
-        QMap<QString, QVariant> result = response.get();
-        //Increase stats as needed
-        int printsStarted = result.value("printsStarted").toInt();
-        double filamentUsed = result.value("filamentUsedGrams").toDouble();
-        double printHours = result.value("printHours").toDouble();
-        printsStarted++;
-        filamentUsed+=loadedPrintInfo["weight"].toDouble();
-        printHours+=parseDuration(loadedPrintInfo["duration"]);
+    //     QMap<QString, QVariant> result = response.get();
+    //     //Increase stats as needed
+    //     int printsStarted = result.value("printsStarted").toInt();
+    //     double filamentUsed = result.value("filamentUsedGrams").toDouble();
+    //     double printHours = result.value("printHours").toDouble();
+    //     printsStarted++;
+    //     filamentUsed+=loadedPrintInfo["weight"].toDouble();
+    //     printHours+=parseDuration(loadedPrintInfo["duration"]);
 
-        //Update stats to database
-        auto response2 = queryDatabase("UPDATE users SET printsStarted = :ps, filamentUsedGrams = :fu, printHours = :ph WHERE id = :id;", {
-            {":ps", printsStarted},
-            {":fu", filamentUsed},
-            {":ph", printHours},
-            {":id", currentUserID}
-        });
-        if (response2.isError()) {
-            ErrorHandler::softHandle(response2);
-        }
-    }
+    //     //Update stats to database
+    //     auto response2 = queryDatabase("UPDATE users SET printsStarted = :ps, filamentUsedGrams = :fu, printHours = :ph WHERE id = :id;", {
+    //         {":ps", printsStarted},
+    //         {":fu", filamentUsed},
+    //         {":ph", printHours},
+    //         {":id", currentUserID}
+    //     });
+    //     if (response2.isError()) {
+    //         ErrorHandler::softHandle(response2);
+    //     }
+    // }
 
     //Send print log to database
-    auto response3 = queryDatabase("INSERT INTO printLog (printerName, durationHours, weight, printer, user, filament, filename, timestamp) "
-                                   "VALUES(:pn, :dh, :wt, :pr, :us, :fm, :fn, :tm)", {
-                                    {":pn", pm->getPrinter(loadedPrinterId)->getName()},
-                                    {":dh", parseDuration(loadedPrintInfo["duration"])},
-                                    {":wt", loadedPrintInfo["weight"].toDouble()},
-                                    {":pr", loadedPrintInfo["printer"]},
-                                    {":us", currentUserID},
-                                    {":fm", loadedPrintInfo["filamentType"]},
-                                    {":fn", loadedPrintInfo["filename"]},
-                                    {":tm", QString("%1").arg(QDateTime::currentSecsSinceEpoch())}
-                                   });
-    if (response3.isError()) {
-        ErrorHandler::softHandle(response3);
-    }
+    // auto response3 = queryDatabase("INSERT INTO printLog (printerName, durationHours, weight, printer, user, filament, filename, timestamp) "
+    //                                "VALUES(:pn, :dh, :wt, :pr, :us, :fm, :fn, :tm)", {
+    //                                 {":pn", pm->getPrinter(loadedPrinterId)->getName()},
+    //                                 {":dh", parseDuration(loadedPrintInfo["duration"])},
+    //                                 {":wt", loadedPrintInfo["weight"].toDouble()},
+    //                                 {":pr", loadedPrintInfo["printer"]},
+    //                                 {":us", currentUserID},
+    //                                 {":fm", loadedPrintInfo["filamentType"]},
+    //                                 {":fn", loadedPrintInfo["filename"]},
+    //                                 {":tm", QString("%1").arg(QDateTime::currentSecsSinceEpoch())}
+    //                                });
+    // if (response3.isError()) {
+    //     ErrorHandler::softHandle(response3);
+    // }
 
     //Send the print to the printer
-    pm->startPrint(loadedPrinterId, loadedPrintFilepath);
+
 }
 
+// Error QTBackend::queryDatabase(const QString &query) {
+//     QSqlQuery q; //Create query
+//     q.prepare(query); //Prepare query
+//     if(q.exec()) { //execute the query and return result
+//         return Error::None();
+//     } else {
+//         return Error("DatabaseQueryError", q.lastError().text(), El::Warning);
+//     }
+// }
 
+// Eo<QMap<QString, QVariant>> QTBackend::queryDatabase(const QString &query, const QMap<QString, QVariant> &values) {
+//     using eop = Eo<QMap<QString, QVariant>>;
+//     QSqlQuery q; //Create query
+//     q.prepare(query); //Prepare query
+//     for (auto it = values.constBegin(); it != values.constEnd(); ++it) { //insert values (parameterized to prevent sql injection vulnerability)
+//         q.bindValue((it.key().startsWith(":")) ? it.key() : ":" + it.key(), it.value());
+//     }
+
+//     QList bound = q.boundValues();
+//     for (auto it = bound.constBegin(); it != bound.constEnd(); ++it) {
+//         if (!it->isValid()) {
+//             return eop("DatabaseQueryBindError", "Failed to bind values", El::Warning);
+//         }
+//     }
+//     bool success = q.exec(); //execute the query
+//     if (!success || !q.isActive()) {
+//         return eop("DatabaseQueryError", q.lastError().text(), El::Warning);
+//     }
+
+//     if (!q.next() || !q.isValid()) {
+//         return eop("DatabaseQueryError", "No valid record", El::Debug);
+//     }
+
+//     QMap<QString, QVariant> output;
+//     QSqlRecord rec = q.record();
+//     for (int i = 0; i < rec.count(); i++) {
+//         output.insert(rec.fieldName(i), rec.value(i));
+//     }
+
+//     return eop(output);
+// }
+
+// Eo<QList<QMap<QString, QVariant>>> QTBackend::queryDatabaseMultirow(const QString &query, const QMap<QString, QVariant> &values) {
+//     using eop = Eo<QList<QMap<QString, QVariant>>>;
+//     QSqlQuery q; //Create query
+//     q.prepare(query); //Prepare query
+//     for (auto it = values.constBegin(); it != values.constEnd(); ++it) { //insert values (parameterized to prevent sql injection vulnerability)
+//         q.bindValue((it.key().startsWith(":")) ? it.key() : ":" + it.key(), it.value());
+//     }
+
+//     QList bound = q.boundValues();
+//     for (auto it = bound.constBegin(); it != bound.constEnd(); ++it) {
+//         if (!it->isValid()) {
+//             return eop("DatabaseQueryBindError", "Failed to bind values", El::Trivial);
+//         }
+//     }
+//     bool success = q.exec(); //execute the query
+//     if (!success || !q.isActive() || !q.isValid()) {
+//         return eop("DatabaseQueryError", q.lastError().text(), El::Warning);
+//     }
+
+//     QList<QMap<QString, QVariant>> output;
+//     while (q.next()) {
+//         QSqlRecord rec = q.record();
+//         QMap<QString, QVariant> r;
+//         for (int i = 0; i < rec.count(); i++) {
+//             r.insert(rec.fieldName(i), rec.value(i));
+//         }
+//         output.append(r);
+//     }
+//     return eop(output);
+// }
