@@ -69,12 +69,13 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         BambuLab* bblp = dynamic_cast<BambuLab*>(p);
         if (bblp == nullptr) {
             p->setBrand("Unknown");
-        } else {
-            if (bblEmu == nullptr && mosqFilesPresent) {
-                if (!QFile("mosq.conf").exists() || !QFile("mqpasswd").exists() || !QFile("ca.crt").exists() || !QFile("server.crt").exists() || !QFile("server.key").exists()) {
-                    mosqFilesPresent = false;
-                    Error("ConfigError", "Missing mosquitto config files", El::Critical).handle();
-                }
+        } else if (mosqFilesPresent) {
+            if (!QFile("mosq.conf").exists() || !QFile("mqpasswd").exists() || !QFile("ca.crt").exists() || !QFile("server.crt").exists() || !QFile("server.key").exists()) {
+                mosqFilesPresent = false;
+                Error("ConfigError", "Missing mosquitto config files", El::Critical).handle();
+                return -1;
+            }
+            if (bblEmu == nullptr) {
                 bblEmu = new BambuEmulator(parent());
                 QObject::connect(bblEmu, &BambuEmulator::jobLoaded, this, [this](quint32 id, const QString &filepath, QMap<QString, QString> properties) {
                     properties.insert("brand", "BambuLab");
