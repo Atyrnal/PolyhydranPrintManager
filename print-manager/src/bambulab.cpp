@@ -28,6 +28,13 @@ BambuLab::BambuLab(QString name, QString model, QString hostname, QString access
     loadCertificate(&BambuLab::startConnection);
 }
 
+Printer::JobStatus BambuLab::getJobStatus() {
+    if (latestReport.isEmpty()) return Printer::JobStatus::Error;
+    //TODO: Parse actual job status from mqtt reports
+    return Printer::JobStatus::Idle;
+
+}
+
 template<typename Func>
 void BambuLab::loadCertificate(Func callback) {
     Log::write("BambuLabPrinter("+name+"@"+hostname+")", "Fetching printer certificate information");

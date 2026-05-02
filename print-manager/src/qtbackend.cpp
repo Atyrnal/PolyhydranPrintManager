@@ -39,6 +39,7 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
     engine = eng;
     engine->rootContext()->setContextProperty("backend", this);
     engine->rootContext()->setContextProperty("printermanager", pm);
+    engine->rootContext()->setContextProperty("printersModel", pm->getModel());
     #ifdef Q_OS_WIN
     engine->rootContext()->setContextProperty("isWindows", true);
     #else

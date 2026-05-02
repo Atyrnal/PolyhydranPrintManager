@@ -4,6 +4,7 @@
 
 #include "octoprintemulator.h"
 #include "bambuemulator.h"
+#include "printersmodel.h"
 
 class PrinterManager : public QObject {
     Q_OBJECT
@@ -15,6 +16,7 @@ public:
     void removePrinter(quint32 id);
     void loadConfig(QJsonObject config);
     void startPrint(quint32 id, const QString &filepath, QJsonObject properties = QJsonObject());
+    PrintersModel* getModel() { return &model; }
 signals:
     void jobLoaded(quint32 id, const QString &filepath, QMap<QString, QString> properties);
     void jobInfoLoaded(QVariantMap properties);
@@ -26,6 +28,7 @@ private:
     QMap<quint32, Printer*> printers;
     QMap<quint32, OctoprintEmulator*> octEmus;
     BambuEmulator* bblEmu = nullptr;
+    PrintersModel model = PrintersModel(&printers);
 };
 
 #endif // PRINTERMANAGER_H

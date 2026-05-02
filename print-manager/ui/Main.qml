@@ -30,7 +30,8 @@ ApplicationWindow { //Root app window
         UserScan,
         StaffScan,
         Printing,
-        Loading
+        Loading,
+        PrinterSelection
     }
 
     enum AppMode {
@@ -55,6 +56,7 @@ ApplicationWindow { //Root app window
     onAppstateChanged: {
         switch (rootWindow.appstate) {
         case Main.AppState.Prep:
+        case Main.AppState.PrinterSelection:
         case Main.AppState.Printing:
         case Main.AppState.UserScan:
         case Main.AppState.StaffScan:
@@ -221,6 +223,10 @@ ApplicationWindow { //Root app window
                         color: Theme.text
                         anchors.horizontalCenter: parent.horizontalCenter
                     }
+                }
+
+                PrinterSelection {
+                    id: printerSelectFrame
                 }
             }
             }

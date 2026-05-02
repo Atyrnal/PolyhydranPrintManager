@@ -38,6 +38,11 @@ void Prusa::startPrint(const QString &fileName) {
     sendGCode(fileName);
 }
 
+Printer::JobStatus Prusa::getJobStatus() {
+    //TODO: Implement proabably? Or make it so that status is only checked upon selection??? idk
+    return Printer::JobStatus::Idle;
+}
+
 /*bool Prusa::testConnection() {
     QUrl verUrl(QString("http://%1/api/version").arg(hostname));
     QNetworkRequest verReq(verUrl);

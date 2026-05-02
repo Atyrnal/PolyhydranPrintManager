@@ -22,6 +22,7 @@ public:
     void setStorageType(QString storageType);
     void setHostname(QString hostname);
     void setApiKey(QString apiKey);
+    Printer::JobStatus getJobStatus() override;
 protected:
     QString hostname;
     QString apiKey;

@@ -153,6 +153,7 @@ public:
     void setHostname(QString hostname);
     void setAccessCode(QString accessCode);
     void setStorageType(const QString &storage);
+    Printer::JobStatus getJobStatus() override;
 signals:
     void messageRecieved(const QByteArray &message, const QMqttTopicName &topic);
     //void setVSN(const QString &vSN);

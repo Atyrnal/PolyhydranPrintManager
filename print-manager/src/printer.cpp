@@ -43,3 +43,7 @@ QString Printer::getModel() {
 QString Printer::getBrand() {
     return this->brand;
 }
+
+bool Printer::getConnectionStatus() {
+    return this->connectionStatus;
+}

@@ -3,7 +3,6 @@
 #include "bambulab.h"
 
 PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
-
 }
 
 // PrinterManager::~PrinterManager() {
@@ -19,7 +18,7 @@ PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
 // }
 
 void PrinterManager::loadConfig(QJsonObject config){
-    QJsonArray prntrs = config.value("printers").toArray(QJsonArray());
+    QJsonArray prntrs = config.value("printers").toArray();
     for (int i = 0; i < prntrs.size(); i++) {
         if (!prntrs[i].isObject()) continue;
         QJsonObject printer = prntrs[i].toObject();
