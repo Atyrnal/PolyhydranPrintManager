@@ -17,7 +17,7 @@
 #include <QSslSocket>
 
 //Atyrnal 10/29/2025
-
+#define CONFIG_MAX_SIZE 1000000
 //See ui/Main.qml for ui declarations
 
 Eo<QJsonObject> readJsonFile(const QString &filepath, quint64 maxSize = 0) {
@@ -57,9 +57,10 @@ int main(int argc, char *argv[])
     QObject* root = engine.rootObjects().at(0); //Get the root object (in this case the Window)
     bk.setRoot(root);
 
-    auto config = readJsonFile(QDir(QCoreApplication::applicationDirPath()).filePath("configuration.json"), 1000000);
+    auto config = readJsonFile(QDir(QCoreApplication::applicationDirPath()).filePath("configuration.json"), CONFIG_MAX_SIZE);
     if (config.isError()) {
         config.softHandle();
+        Error("ConfigError", "Failed to load configuration file", El::Fatal).handle();
     } else {
         bk.loadConfig(config.get());
     }

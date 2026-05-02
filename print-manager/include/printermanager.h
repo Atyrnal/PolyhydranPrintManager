@@ -29,6 +29,7 @@ private:
     QMap<quint32, OctoprintEmulator*> octEmus;
     BambuEmulator* bblEmu = nullptr;
     PrintersModel model = PrintersModel(&printers);
+    bool mosqFilesPresent = true;
 };
 
 #endif // PRINTERMANAGER_H

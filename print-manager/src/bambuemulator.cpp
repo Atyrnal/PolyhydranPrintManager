@@ -29,7 +29,7 @@ void BambuEmulator::startMosquitto() {
     //Start mosquitto instance
     mosquito->start(mosquitoPath, QStringList() << "-c" << configPath << "-v");
     if (!mosquito->waitForStarted(2000)) {
-        Error("BambuEmulatorError", "Failed to start mosquitto", El::Critical).handle();
+        Error("BambuEmulatorError", "Failed to start mosquitto", El::Warning).handle();
         return;
     };
 
