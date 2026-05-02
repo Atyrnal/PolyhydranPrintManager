@@ -30,7 +30,7 @@ Item {
             anchors.topMargin: 20
             width: printInfoText.implicitWidth + 20
             height: printInfoText.implicitHeight + 20
-            color : "#161619"
+            color : Theme.background
             anchors.horizontalCenter: parent.horizontalCenter
             border.width: 2
             border.color: Theme.text

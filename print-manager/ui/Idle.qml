@@ -149,10 +149,9 @@ Item { //idleFrame container
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: 100
-        width: 630
+        width: 415
         height: 50
-
-        IconButtonC {
+        IconButtonC { //Move these to rowlayout
             id: orcaSlicerButton
             anchors.bottom: parent.bottom
             anchors.right: parent.right
@@ -186,29 +185,30 @@ Item { //idleFrame container
             label_text: "Help"
         }
 
-        IconButtonC {
-            id: uploadButton
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-            onClicked: gcodeFileDialog.open()
-            width: 200
-            height: 50
-            radius: 5
-            border_width: 0
-            color: Theme.primary
-            pressed_color : Theme.primaryActive
-            label_text : "Upload GCode"
-            image_source: "../resources/upload_file.svg"
+        // IconButtonC {
+        //     id: uploadButton
+        //     anchors.bottom: parent.bottom
+        //     anchors.horizontalCenter: parent.horizontalCenter
+        //     onClicked: gcodeFileDialog.open()
+        //     width: 50 //200 when visible
+        //     height: 50
+        //     radius: 5
+        //     border_width: 0
+        //     color: Theme.primary
+        //     pressed_color : Theme.primaryActive
+        //     label_text : "Upload GCode"
+        //     image_source: "../resources/upload_file.svg"
+        //     visible: false //Dont implement this until we have printer selection and settings (ams mapping, flow cali, vibro cali, etc.) down to a science.
 
-            FileDialog {
-                id: gcodeFileDialog
-                title: "Select a file"
-                nameFilters: ["GCode File (*.gcode *.bgcode *.gcode.3mf)"]
-                onAccepted: {
-                    rootWindow.appstate = Main.AppState.Loading
-                    backend.fileUploaded(gcodeFileDialog.selectedFile)
-                }
-            }
-        }
+        //     FileDialog {
+        //         id: gcodeFileDialog
+        //         title: "Select a file"
+        //         nameFilters: ["GCode File (*.gcode *.bgcode *.gcode.3mf)"]
+        //         onAccepted: {
+        //             rootWindow.appstate = Main.AppState.Loading
+        //             backend.fileUploaded(gcodeFileDialog.selectedFile)
+        //         }
+        //     }
+        // }
     }
 }
