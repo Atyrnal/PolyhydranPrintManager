@@ -190,7 +190,7 @@ Item { //idleFrame container
         //     anchors.bottom: parent.bottom
         //     anchors.horizontalCenter: parent.horizontalCenter
         //     onClicked: gcodeFileDialog.open()
-        //     width: 50 //200 when visible
+        //     width: 200 //200 when visible
         //     height: 50
         //     radius: 5
         //     border_width: 0
@@ -198,7 +198,7 @@ Item { //idleFrame container
         //     pressed_color : Theme.primaryActive
         //     label_text : "Upload GCode"
         //     image_source: "../resources/upload_file.svg"
-        //     visible: false //Dont implement this until we have printer selection and settings (ams mapping, flow cali, vibro cali, etc.) down to a science.
+        //     visible: true //Dont implement this until we have printer selection and settings (ams mapping, flow cali, vibro cali, etc.) down to a science.
 
         //     FileDialog {
         //         id: gcodeFileDialog

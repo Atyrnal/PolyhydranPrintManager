@@ -69,13 +69,8 @@ ApplicationWindow { //Root app window
             break
 
         case Main.AppState.Message:
-            if (acceptMessageButton.text === "Training Completed") {
-                stateTimeoutTimer.stop()
-                break;
-            } else {
-                stateTimeoutTimer.restart()
-                break;
-            }
+            stateTimeoutTimer.stop()
+            break;
 
         default:
             stateTimeoutTimer.restart()

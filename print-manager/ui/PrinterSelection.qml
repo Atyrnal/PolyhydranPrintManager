@@ -5,8 +5,8 @@ import QtQuick.Controls.Material
 import PolyhydranPrintManager
 
 Item {
-    anchors.fill: parent
-    anchors.centerIn: parent
+    // anchors.fill: parent
+    // anchors.centerIn: parent
     Item {
         height: childrenRect.height
         width: parent.width
