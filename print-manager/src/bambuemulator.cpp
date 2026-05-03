@@ -175,7 +175,10 @@ void BambuEmulator::recieveFile(QTcpSocket* controlSocket, BambuLab* printer) {
     config.setLocalCertificate(QSslCertificate::fromPath("server.crt").at(0));
     QFile keyFile("server.key");
     auto p = keyFile.open(QIODevice::ReadOnly);
-    if (!p) return Error("BambuEmulatorFTPS", "Unable to open private key file", El::Critical).handle();
+    if (!p) {
+        ftpsServer->deleteLater();
+        return Error("BambuEmulatorFTPS", "Unable to open private key file", El::Critical).handle();
+    }
     config.setPrivateKey(QSslKey(&keyFile, QSsl::Rsa));
     keyFile.close();
     ftpsServer->setSslConfiguration(config);
@@ -319,6 +322,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
 
         QSslServer* ftpsControlServer = new QSslServer(this);
         QTcpServer* bindingServer = new QTcpServer(this);
+        QSslServer* bindingServerSsl = new QSslServer(this);
 
         QSslConfiguration config = QSslConfiguration::defaultConfiguration();
         config.setLocalCertificate(QSslCertificate::fromPath("server.crt").at(0));
@@ -328,12 +332,14 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
         config.setPrivateKey(QSslKey(&keyFile, QSsl::Rsa));
         keyFile.close();
         ftpsControlServer->setSslConfiguration(config);
+        bindingServerSsl->setSslConfiguration(config);
 
         //Create server on port 990 to listen for ftps commands
         if (!ftpsControlServer->listen(QHostAddress(virtualIP), printer->ftpsControlPort)) { //THIS NEEDS SUDO "sudo setcap 'cap_net_bind_service=+ep' ./appPolyhydranPrintManager"
             Error("BambuEmulatorServerError", "Failed to listen on " + virtualIP + ":" + QString::number(printer->ftpsControlPort) ,El::Critical).handle();
             ftpsControlServer->deleteLater();
             bindingServer->deleteLater();
+            bindingServerSsl->deleteLater();
             return;
         }
 
@@ -344,6 +350,15 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
             Error("BambuEmulatorServerError", "Failed to listen on" + virtualIP + ":" + QString::number(printer->bindingPortTCP) ,El::Critical).handle();
             ftpsControlServer->deleteLater();
             bindingServer->deleteLater();
+            bindingServerSsl->deleteLater();
+            return;
+        }
+
+        if (!bindingServerSsl->listen(QHostAddress(virtualIP), printer->bindingPortTLS)) {
+            Error("BambuEmulatorServerError", "Failed to listen on" + virtualIP + ":" + QString::number(printer->bindingPortTLS) ,El::Critical).handle();
+            ftpsControlServer->deleteLater();
+            bindingServer->deleteLater();
+            bindingServerSsl->deleteLater();
             return;
         }
 
@@ -362,8 +377,20 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
                 Log::write("BambuEmulatorBinding", "Binding complete for " + printer->name + " over TCP");
                 tcpSocket->deleteLater();
             });
+        });
 
+        connect(bindingServerSsl, &QSslServer::pendingConnectionAvailable, this, [this, bindingServerSsl, printer]() {
+            auto socket = bindingServerSsl->nextPendingConnection();
+            if (!socket) return;
 
+            connect(socket, &QSslSocket::readyRead, this, [this, socket, printer]() {
+                slicerHandshake(socket, printer);
+            });
+
+            connect(socket, &QSslSocket::disconnected, this, [socket, printer](){
+                Log::write("BambuEmulatorBinding", "Binding complete for " + printer->name + " over TLS");
+                socket->deleteLater();
+            });
         });
 
 
