@@ -17,7 +17,7 @@ Prusa::Prusa(QObject* parent) : Printer(parent) {
     testConnection();
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &Prusa::testConnection);
-    timer->start(10000);
+    timer->start(5000);
 }
 
 Prusa::Prusa(QString name, QString model, QString hostname, QString apiKey, QString storageType, QObject* parent) : Printer(name, model, "Prusa", parent) {
@@ -29,7 +29,7 @@ Prusa::Prusa(QString name, QString model, QString hostname, QString apiKey, QStr
     connect(timer, &QTimer::timeout, this, [this](){
         if (connectedOnce) testConnection();
     });
-    timer->start(10000);
+    timer->start(5000);
 }
 
 
@@ -50,18 +50,10 @@ void Prusa::startPrint(const QString &fileName) {
 }
 
 Printer::JobStatus Prusa::getJobStatus() {
-    //TODO: Implement proabably? Or make it so that status is only checked upon selection??? idk
-    return Printer::JobStatus::Idle;
+
+    if (!connectionStatus) return Printer::JobStatus::Error;
+    return this->jobStatus;
 }
-
-/*bool Prusa::testConnection() {
-    QUrl verUrl(QString("http://%1/api/version").arg(hostname));
-    QNetworkRequest verReq(verUrl);
-    verReq.setRawHeader("X-Api-Key", apiKey.toUtf8());
-
-    QNetworkReply* verReply = manager.get(verReq);
-
-}*/
 
 void Prusa::sendGCode(QString filepath) {
     Log::write("PrusaPrinter("+name+"@"+hostname+")", "Attempting to start print " + filepath);
@@ -102,7 +94,8 @@ void Prusa::sendGCode(QString filepath) {
 }
 
 void Prusa::testConnection() {
-    QUrl testUrl(QString("http://%1/api/v1/info").arg(hostname));
+    //Log::write("PrusaPrinter("+name+"@"+hostname+")", "Testing connection...");
+    QUrl testUrl(QString("http://%1/api/v1/status").arg(hostname));
     QNetworkRequest testReq(testUrl);
     testReq.setRawHeader("X-Api-Key", apiKey.toUtf8());
     QNetworkReply* testReply = manager.get(testReq);
@@ -115,7 +108,7 @@ void Prusa::testConnection() {
             } else if (!connectedOnce) {
                 Error::handle("PrusaPrinterConnectionTestError", "Unable to connect to printer " + name, El::Warning);
             }
-            connectionStatus = false;
+            this->connectionStatus = false;
             return;
         }
         //Success
@@ -123,11 +116,46 @@ void Prusa::testConnection() {
             Log::write("PrusaPrinter("+name+"@"+hostname+")", "Connected successfully");
             emit this->connectionUpdated(true);
         }
-        connectionStatus = true;
-        connectedOnce = true;
+        this->connectionStatus = true;
+        this->connectedOnce = true;
+        int statusCode = testReply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        //Log::write("PrusaPrinter("+name+"@"+hostname+")", QString("Connection test response status %1").arg(statusCode));
+        if (statusCode == 200) {
+            QJsonParseError p;
+            QJsonDocument response = QJsonDocument::fromJson(testReply->readAll(), &p);
+            if (p.error) {
+                Error::handle("JsonParseError", "Unable to parse job response JSON", El::Warning);
+                this->jobStatus = Printer::JobStatus::Error;
+                return;
+            }
+            QString prev = jobState;
+            this->jobState = response.object().value("printer").toObject({}).value("state").toString("NOTFOUND");
+            //Log::write("PrusaPrinter("+name+"@"+hostname+")", QString("jobState %1, prev %2").arg(jobState, prev));
+            //enum: [ IDLE, BUSY, PRINTING, PAUSED, FINISHED, STOPPED, ERROR, ATTENTION, READY ]
+            if (jobState == "PRINTING" || jobState == "PAUSED" || jobState == "BUSY" || jobState == "ATTENTION") this->jobStatus = JobStatus::Busy;
+            else if (jobState == "FINISHED" || jobState == "STOPPED" || jobState == "IDLE" || jobState == "READY") this->jobStatus = JobStatus::Idle;
+            else this->jobStatus = JobStatus::Error;
+
+            if (jobState != prev && prev != "UNDEFINED") { //Switched states
+                Log::write("PrusaPrinter("+name+"@"+hostname+")", QString("jobState updated from %1 to %2").arg(prev, jobState));
+                if (jobState == "PRINTING" || prev == "BUSY") {
+                    if (prev == "PAUSED" || prev == "ATTENTION") //update latest print back to ongoing
+                        emit this->printStatusUpdated("Ongoing");
+                } else if (jobState == "PAUSED" || jobState == "ATTENTION") {
+                    if (prev == "PRINTING" || prev == "BUSY") //update lastest print to halted
+                        emit this->printStatusUpdated("Halted");
+                } else if (jobState == "STOPPED" || jobState == "ERROR" || jobState == "IDLE") {
+                    if (prev == "PAUSED" || prev == "PRINTING" || prev == "ATTENTION" || prev == "BUSY") //update latest print to failed
+                        emit this->printStatusUpdated("Failed");
+                } else if (jobState == "FINISHED") { //update latest print to completed
+                    emit this->printStatusUpdated("Completed");
+                }
+            }
+
+        } else this->jobStatus = Printer::JobStatus::Error;
         return;
     });
-    QTimer::singleShot(10000, this, [this, testReply](){
+    QTimer::singleShot(5000, this, [this, testReply](){
         if (!testReply->isFinished()) {
             if (connectionStatus) {
                 emit this->connectionUpdated(false);
@@ -135,7 +163,7 @@ void Prusa::testConnection() {
             } else if (!connectedOnce) {
                 Error::handle("PrusaPrinterConnectionTestError", "Unable to connect to printer " + name, El::Warning);
             }
-            connectionStatus = false;
+            this->connectionStatus = false;
         }
         testReply->deleteLater();
     });

@@ -58,7 +58,7 @@ Item {
                 verticalAlignment: Text.AlignVCenter
                 anchors.top: parent.top
                 anchors.topMargin: 10
-                text: "Selected printer is not connected"
+                text: "Unknown Error"
                 font.pointSize: 20
                 color: "#ff2828"
                 visible:error
@@ -141,7 +141,21 @@ Item {
             msfButton.checked = true
             psfButton.checked = false
         }
-        error = !printInfo.connected
+        error = !printInfo.connected || printInfo.jobStatus >= 100
+        if (error) {
+            if (!printInfo.connected) {
+                err.text = "Selected printer is not connected"
+            } else if (printInfo.jobStatus >= 100) {
+                if (printInfo.jobStatus < 200) {
+                    err.text = "Selected printer is busy"
+                } else {
+                    err.text = "Selected printer encountered an error"
+                }
+            } else {
+                err.text = "Solar bit flip: no causality"//lol
+            }
+        }
+
         printInfoText.text = op
     }
 

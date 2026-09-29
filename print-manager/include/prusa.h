@@ -29,6 +29,8 @@ protected:
     QString storageType;
     void testConnection();
 private:
+    Printer::JobStatus jobStatus;
+    QString jobState = "UNDEFINED";
     bool connectedOnce = false;
     void sendGCode(QString filepath);
     //bool testConnection();

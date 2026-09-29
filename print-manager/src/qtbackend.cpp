@@ -16,6 +16,7 @@
 #include "errorhandler.hpp"
 #include "ltx2aQT.h"
 #include <QCoreApplication>
+#include <QTimer>
 
 #ifndef Q_OS_WIN
 #include <QStandardPaths>
@@ -46,6 +47,7 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
 
     connect(this, &QTBackend::printLoaded, this, &QTBackend::jobLoaded);
     connect(pm, &PrinterManager::jobLoaded, this, &QTBackend::jobLoaded);
+    connect(pm, &PrinterManager::printStatusUpdated, this, &QTBackend::printStatusUpdated);
 
     connect(app, &QCoreApplication::aboutToQuit, pm, &PrinterManager::closing);
 
@@ -55,6 +57,12 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
             QString cardid = rfidReader.getNext().replace("\"", "").trimmed();
             this->cardScanned(cardid);
         }
+    });
+
+
+
+    QTimer::singleShot(5000, this, [this](){
+        root->setProperty("appstate", AppState::Loading+1);
     });
 
 
@@ -176,6 +184,7 @@ Q_INVOKABLE void QTBackend::fileUploaded(const QUrl &fileUrl) {
     if (pm->getPrinter(loadedPrint.printerId) == nullptr) return;
     propertiesForJS.insert("printerName", pm->getPrinter(loadedPrint.printerId)->getName());
     propertiesForJS.insert("connected", pm->getPrinter(loadedPrint.printerId)->getConnectionStatus());
+    propertiesForJS.insert("jobstatus", pm->getPrinter(loadedPrint.printerId)->getJobStatus());
     Log::write("QtBackend", "Loaded print info for: " + filepath);
     //emit signals to main loop and QML to update appstate and load print files
     //Printer is online
@@ -285,6 +294,7 @@ void QTBackend::showPrintOverridePrep() {
     propertiesForJS.insert("personalFilament", loadedPrint.isPersonalFilament);
     if (pm->getPrinter(loadedPrint.printerId) != nullptr) propertiesForJS.insert("printerName", pm->getPrinter(loadedPrint.printerId)->getName());
     propertiesForJS.insert("connected", (pm->getPrinter(loadedPrint.printerId) != nullptr) ? pm->getPrinter(loadedPrint.printerId)->getConnectionStatus() : false);
+    propertiesForJS.insert("jobstatus", (pm->getPrinter(loadedPrint.printerId) != nullptr) ? pm->getPrinter(loadedPrint.printerId)->getJobStatus() : Printer::JobStatus::Error);
     emit printIssuesLoaded(propertiesForJS, loadedPrint.issues);
     root->setProperty("appstate", AppState::PrepOverride);
 }
@@ -429,6 +439,7 @@ void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
     }
     showMessage("Printing now!");
     if (pm->getPrinter(loadedPrint.printerId) == nullptr) return Error("QTBackendError", "Loaded Printer not found", El::Critical).handle();
+    //TODO: Check jobstate and update previous print accordingly
     QVariantMap printLogInfo = {
         {"User ID", currentUserID},
         {"Printer", pm->getPrinter(loadedPrint.printerId)->getName()},
@@ -438,11 +449,25 @@ void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
         {"Filament Type", (loadedPrint.printInfo.contains("filament") && loadedPrint.printInfo["filament"] != "") ? loadedPrint.printInfo["filament"] : loadedPrint.printInfo["filamentType"]},
         {"Filename", loadedPrint.printInfo["filename"]},
         {"Personal Filament", loadedPrint.isPersonalFilament},
+        {"Status", "Ongoing"}
     };
     if (staffApproved) printLogInfo.insert("Staff Approver ID", currentStaffID);
     airtable->table("Print Log")->createRecord(printLogInfo);
     Log::write("QTBackend", "Starting Print");
     pm->startPrint(loadedPrint.printerId, loadedPrint.filepath);
+}
+
+void QTBackend::printStatusUpdated(quint16 _printerId, const QString &printerName, QString status) {
+
+    //TODO: Set to aborted if failed within a certain time of it being started
+    airtable->table("Print Log")->getRecord(QString("{Printer} = '%1'").arg(printerName), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
+        if (recordeo.isError()) return recordeo.softHandle();
+        QVariantMap recordFields = recordeo.get().value("fields").toMap();
+        QString curstatus = recordFields.value("Status", "Unknown").toString();
+        if (curstatus == "Ongoing" || curstatus == "Halted" || curstatus == "Unknown") {
+            airtable->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", status}});
+        }
+    });
 }
 
 // Error QTBackend::queryDatabase(const QString &query) {

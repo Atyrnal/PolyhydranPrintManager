@@ -166,6 +166,7 @@ protected:
     QString username;
     QString modelId;
     QString firmwareVer;
+    JobStatus jobStatus;
     int devCap = 1;
     bool hasAms = false;
     QList<BambuAms> amsList;
@@ -176,6 +177,7 @@ protected:
     void reconnect();
 private:
     bool connectedOnce = false;
+    QString jobState = "UNDEFINED";
     void updateState(QByteArray latestReportBytes);
     bool isReady = false;
     QString virtualIP;

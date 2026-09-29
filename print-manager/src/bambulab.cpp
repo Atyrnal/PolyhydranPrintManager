@@ -30,10 +30,8 @@ BambuLab::BambuLab(QString name, QString model, QString hostname, QString access
 }
 
 Printer::JobStatus BambuLab::getJobStatus() {
-    if (latestReport.isEmpty()) return Printer::JobStatus::Error;
-    //TODO: Parse actual job status from mqtt reports
-    return Printer::JobStatus::Idle;
-
+    if (latestReport.isEmpty() || !connectionStatus) return Printer::JobStatus::Error;
+    return this->jobStatus;
 }
 
 template<typename Func>
@@ -113,7 +111,7 @@ void BambuLab::startConnection() {
 
     QObject::connect(mqtt, &QMqttClient::messageReceived, this, [this](const QByteArray &message, const QMqttTopicName &topic) {
         emit messageRecieved(message, topic);
-        if (this->reportFilter.match(topic)) { //TODO: Pushall vs push_status check
+        if (this->reportFilter.match(topic)) { //TODO: Pushall vs push_status check //Should be good now with report merging?
             updateState(message);
             //Log::write("BambuLabPrinter("+name+"@"+hostname+")", QJsonDocument(latestReport).toJson());
         } else {
@@ -295,6 +293,31 @@ void BambuLab::updateState(QByteArray latestReportBytes) {
     }
     latestReport = mergeObjects(latestReport, doc.object()); //Handle P1S partial data
 
+    //Update job status -- Tenative
+    QString prev = jobState;
+    jobState = latestReport.value("print").toObject({}).value("gcode_state").toString("UNDEFINED");
+    if (jobState == "RUNNING" || jobState == "PAUSED" || jobState == "PREPARE") jobStatus = JobStatus::Busy;
+    else if (jobState == "IDLE" || jobState == "FAILED" || jobState == "FINISH") jobStatus = JobStatus::Idle;
+    else jobStatus = JobStatus::Error;
+
+    if (jobState != prev && prev != "UNDEFINED") { //Switch state
+        //Log::write("BambuLabPrinter("+name+"@"+hostname+")", QString("jobState updated from %1 to %2").arg(prev, jobState));
+        if (jobState == "RUNNING") {
+            if (prev == "PAUSED") //update latest print back to ongoing
+                emit this->printStatusUpdated("Ongoing");
+        } else if (jobState == "PAUSED") {
+            if (prev == "RUNNING") //update lastest print to halted
+                emit this->printStatusUpdated("Halted");
+        } else if (jobState == "IDLE") {
+            if (prev == "PAUSED" || prev == "RUNNING" || prev == "PREPARE") //update latest print to failed
+                emit this->printStatusUpdated("Failed");
+        } else if (jobState == "FAILED") { //update latest print to failed
+            emit this->printStatusUpdated("Failed");
+        } else if (jobState == "FINISH") { //update latest print to completed
+            emit this->printStatusUpdated("Completed");
+        }
+
+    }
 
     //Update amsinfo
     QJsonObject amsInfo = latestReport.value("print").toObject().value("ams").toObject();

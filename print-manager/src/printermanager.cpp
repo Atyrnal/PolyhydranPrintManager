@@ -65,6 +65,9 @@ Printer* PrinterManager::getPrinter(quint32 id) {
 quint32 PrinterManager::addPrinter(Printer* p) {
     quint32 id = nextId++;
     printers.insert(id, p);
+    QObject::connect(p, &Printer::printStatusUpdated, this, [this, id, p](QString status){
+        emit this->printStatusUpdated(id, printers.value(id)->getName(), status);
+    });
     if (p->getBrand() == "BambuLab") {
         BambuLab* bblp = dynamic_cast<BambuLab*>(p);
         if (bblp == nullptr) {
@@ -88,6 +91,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
                     if (getPrinter(id) == nullptr) return;
                     propertiesForJS.insert("printerName", getPrinter(id)->getName());
                     propertiesForJS.insert("connected", getPrinter(id)->getConnectionStatus());
+                    propertiesForJS.insert("jobstatus", getPrinter(id)->getJobStatus());
                     emit this->jobLoaded(id, filepath, properties);
                     emit this->jobInfoLoaded(propertiesForJS);
                 });
@@ -111,6 +115,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         }
         propertiesForJS.insert("printerName", getPrinter(id)->getName());
         propertiesForJS.insert("connected", getPrinter(id)->getConnectionStatus());
+        propertiesForJS.insert("jobstatus", getPrinter(id)->getJobStatus());
         emit this->jobInfoLoaded(propertiesForJS);
 
     });

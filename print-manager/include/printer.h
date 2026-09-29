@@ -15,8 +15,8 @@ class Printer : public QObject {
 public:
     enum JobStatus {
         Idle,
-        Occupied,
-        Error
+        Busy=100,
+        Error=200
     };
 
     Printer(QObject* parent = 0);
@@ -33,6 +33,7 @@ public:
     virtual JobStatus getJobStatus() = 0;
 signals:
     void connectionUpdated(bool status);
+    void printStatusUpdated(QString status);
 protected:
     QString name;
     QString model;

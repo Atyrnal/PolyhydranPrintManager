@@ -20,6 +20,7 @@ public:
 signals:
     void jobLoaded(quint32 id, const QString &filepath, QMap<QString, QString> properties);
     void jobInfoLoaded(QVariantMap properties);
+    void printStatusUpdated(quint32 id, QString printerName, QString status);
 public slots:
     void closing();
 private:

@@ -105,6 +105,7 @@ signals:
     void closing();
 private slots:
     void jobLoaded(quint32 id, const QString &filepath, const QMap<QString, QString> &printInfo);
+    void printStatusUpdated(quint16 printerId, const QString &printerName, QString status);
 public slots:
     Q_INVOKABLE void orcaButtonClicked();
     Q_INVOKABLE void helpButtonClicked();
