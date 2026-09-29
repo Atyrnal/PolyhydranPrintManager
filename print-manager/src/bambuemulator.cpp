@@ -42,6 +42,28 @@ void BambuEmulator::startMosquitto() {
     // });
     QObject::connect(mosquito, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), [](int code, QProcess::ExitStatus){ Error("BambuEmulatorError", "Mosquitto exited " + QString::number(code), El::Critical).handle(); });
 
+    QObject::connect(mqtt, &QMqttClient::connected, this, [this](){
+        mqtt->subscribe(BambuEmulator::requestFilter);
+        Log::write("BambuEmulator", "Connected to Mosquitto");
+    });
+
+    // QObject::connect(mqtt, &QMqttClient::, this, [this](){
+
+    // });
+
+    QObject::connect(mqtt, &QMqttClient::disconnected, this, [this](){
+        Log::write("BambuEmulator", "Disconnected to Mosquitto");
+        QTimer::singleShot(5000, this, [this](){
+            Log::write("BambuEmulator", "Retrying mosquitto connection...");
+            connectToMosquitto();
+        });
+    });
+
+    QObject::connect(mqtt, &QMqttClient::messageReceived, this, &BambuEmulator::slicerRequestRecieved);
+    connectToMosquitto();
+}
+
+void BambuEmulator::connectToMosquitto() {
     //Mqtt ambassador to moquitto
     mqtt->setHostname("127.0.0.1");
     mqtt->setPort(8883);
@@ -54,18 +76,6 @@ void BambuEmulator::startMosquitto() {
     sslConfig.setPeerVerifyMode(QSslSocket::VerifyNone);
     sslConfig.setProtocol(QSsl::TlsV1_2OrLater);
     mqtt->connectToHostEncrypted(sslConfig);
-
-
-    QObject::connect(mqtt, &QMqttClient::connected, this, [this](){
-        mqtt->subscribe(BambuEmulator::requestFilter);
-        Log::write("BambuEmulator", "Connected to Mosquitto");
-    });
-
-    QObject::connect(mqtt, &QMqttClient::disconnected, this, [this](){
-        Log::write("BambuEmulator", "Disconnected to Mosquitto");
-    });
-
-    QObject::connect(mqtt, &QMqttClient::messageReceived, this, &BambuEmulator::slicerRequestRecieved);
 }
 
 void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqttTopicName &topic) {

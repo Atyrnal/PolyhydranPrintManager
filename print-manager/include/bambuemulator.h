@@ -27,6 +27,7 @@ private:
     QMqttClient* mqtt;
     static const inline QMqttTopicFilter requestFilter {"device/+/request"};
     void startMosquitto();
+    void connectToMosquitto();
     void ftpsController(QTcpSocket* socket, BambuLab* printere);
     void slicerHandshake(QTcpSocket* socket, BambuLab* printer);
     void startUDPNotify(BambuLab* printer);
