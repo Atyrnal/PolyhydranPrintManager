@@ -18,10 +18,6 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 
-struct Print { //TODO
-
-};
-
 struct User {
     QString id;
     QString firstname;
@@ -32,17 +28,28 @@ struct User {
     bool isTrained = 0;
 };
 
+enum SortDir {
+    ASC = 0,
+    DESC = 1
+};
+struct Sort {
+    QString field;
+    SortDir direction;
+};
+
+
+
 
 class AirtableTable : public QObject {
     Q_OBJECT
     friend class AirtableBase;
 public:
     template<typename Func>
-    void getRecord(QString filterFormula, Func callback);//QVariantMap
+    void getRecord(QString filterFormula, QList<Sort> sorts, Func callback);//QVariantMap
     template<typename Func>
-    void getRecords(QString filterFormula, Func callback); //QList<QVariantMap>
+    void getRecords(QString filterFormula, QList<Sort> sorts, Func callback); //QList<QVariantMap>
     void createRecord(QVariantMap recordFields);
-    void updateRecord(QString filterFormula, QVariantMap recordFields);
+    void updateRecord(QString filterFormula, QList<Sort> sorts, QVariantMap recordFields);
     void updateRecordById(QString recordId, QVariantMap recordFields);
     // template<typename Func>
     // void createRecord(QVariantMap recordFields, Func callback);
@@ -88,6 +95,8 @@ private:
 class Airtable : public QObject {
     Q_OBJECT
 public:
+
+
     Airtable(QString dbHostname, QString dbKey, QObject* parent=nullptr);
     AirtableBase* base(QString id);
 private:
@@ -98,9 +107,9 @@ private:
 
 
 template<typename Func>
-void AirtableTable::getRecord(QString filterFormula, Func callback) {
+void AirtableTable::getRecord(QString filterFormula, QList<Sort> sorts, Func callback) {
     using eop = Eo<QVariantMap>;
-    getRecords(filterFormula, [=](Eo<QList<QVariantMap>> records){
+    getRecords(filterFormula, sorts, [=](Eo<QList<QVariantMap>> records){
         if (records.isError()) {
             callback(eop(records.error()));
         } else if (records.get().length() < 1) {
@@ -111,10 +120,17 @@ void AirtableTable::getRecord(QString filterFormula, Func callback) {
     });
 }
 
+
+
 template<typename Func>
-void AirtableTable::getRecords(QString filterFormula, Func callback) {
+void AirtableTable::getRecords(QString filterFormula, QList<Sort> sorts, Func callback) {
     using eop = Eo<QList<QVariantMap>>;
-    QNetworkReply* reply = getRaw(QString("%1/v0/%2/%3?filterByFormula=%4").arg(dbHostname, dbBase, dbTable, filterFormula));
+    QString formulaUrl = QString("%1/v0/%2/%3?filterByFormula=%4").arg(dbHostname, dbBase, dbTable, filterFormula);
+    QString sortUrl = "";
+    for (quint32 i = 0; i < sorts.size(); i++) {
+        sortUrl += QString("&sort[%1][field]=%2&sort[%1][direction]=%4").arg(i).arg(sorts.at(i).field, (sorts.at(i).direction) ? "desc" : "asc");
+    }
+    QNetworkReply* reply = getRaw(formulaUrl + sortUrl);
     QObject::connect(reply, &QNetworkReply::finished, reply, [=]() {
         if(reply->error() != QNetworkReply::NoError) {
             callback(eop("AirtableNetworkError", reply->errorString(), El::Warning));

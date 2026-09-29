@@ -63,8 +63,8 @@ void AirtableTable::createRecord(QVariantMap recordFields) {
 
 }
 
-void AirtableTable::updateRecord(QString filterFormula, QVariantMap recordFields) {
-    this->getRecord(filterFormula, [this, recordFields](Eo<QVariantMap> recordeo){
+void AirtableTable::updateRecord(QString filterFormula, QList<Sort> sorts, QVariantMap recordFields) {
+    this->getRecord(filterFormula, sorts, [this, recordFields](Eo<QVariantMap> recordeo){
         if (recordeo.isError()) return recordeo.softHandle();
         auto record = recordeo.get();
         if (!record.contains("id")) return;

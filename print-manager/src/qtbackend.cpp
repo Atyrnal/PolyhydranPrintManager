@@ -308,7 +308,7 @@ void QTBackend::cardScanned(const QString &cardid) {
         if (isCachedStaff) {
             printStartCheck(true);
         } else { //Fetch from airtable
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(currentUserID), [=, this](Eo<QVariantMap> recordeo){
+            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(currentUserID), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
                 if (recordeo.isError()) {
                     if (recordeo.errorLevel() <= El::Trivial) {
                         recordeo.softHandle();
@@ -330,7 +330,7 @@ void QTBackend::cardScanned(const QString &cardid) {
         if (isCachedStaff) {
             completeTraining();
         } else { //fetch airtable
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), [=, this](Eo<QVariantMap> recordeo){
+            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
                 if (recordeo.isError()) {
                     if (recordeo.errorLevel() <= El::Trivial) {
                         root->setProperty("scancontext", ScanContext::StaffTraining);
@@ -357,7 +357,7 @@ void QTBackend::cardScanned(const QString &cardid) {
         if (isCachedStaff) {
             printStartCheck(true);
         } else {
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), [=, this](Eo<QVariantMap> recordeo){
+            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
                 if (recordeo.isError()) {
                     if (recordeo.errorLevel() <= El::Trivial) {
                         recordeo.softHandle();
@@ -378,7 +378,7 @@ void QTBackend::cardScanned(const QString &cardid) {
         if (isCachedStaff) {
             showPrintOverridePrep();
         } else {
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), [=, this](Eo<QVariantMap> recordeo){
+            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
                 if (recordeo.isError()) {
                     if (recordeo.errorLevel() <= El::Trivial) {
                         recordeo.softHandle();
