@@ -5,10 +5,12 @@
 #include <QDebug>
 #include <QObject>
 #include <QVariant>
+#include <QDateTime>
 
 enum ErrorLevel {
     None,
     Log,
+    Cond,
     Debug,
     Trivial,
     Warning,
@@ -16,17 +18,32 @@ enum ErrorLevel {
     Fatal
 };
 
-class Error {
+enum CheckLevel {
+    FAIL = 0,
+    OK = 1,
+    WARN = 2
+};
+
+class Loggable {
 public:
-    Error(QString t = "None", QString m= "", ErrorLevel l = ErrorLevel::Trivial) : errorString(m), type(t), level(l) {};
+    Loggable(QDateTime t): crTime(t) {};
+    QDateTime crTime;
+    virtual void buffer() const = 0;
+};
+
+class Error : public Loggable {
+public:
+    Error(QString t = "None", QString m= "", ErrorLevel l = ErrorLevel::Trivial) : Loggable(QDateTime::currentDateTimeUtc()), errorString(m), type(t), level(l) {};
     const QString errorString;
     const QString type;
     const ErrorLevel level;
     static Error None() { return Error("None", "", ErrorLevel::None); }
     static Error handle(QString t, QString m= "", ErrorLevel l = ErrorLevel::Trivial);
     static Error softHandle(QString t, QString m= "", ErrorLevel l = ErrorLevel::Trivial);
+    static Error buffer(QString t, QString m= "", ErrorLevel l = ErrorLevel::Trivial);
     void handle() const;
     void softHandle() const;
+    void buffer() const;
     bool isError() const {
         return !(level == ErrorLevel::None || type == "None");
     }
@@ -37,17 +54,50 @@ public:
     };
 };
 
-class Log {
+class Log : public Loggable{
 public:
-    Log(QString t = "", QString m = "") : message(m), type(t) {};
+    Log(QString t = "", QString m = "") : Loggable(QDateTime::currentDateTimeUtc()), message(m), type(t) {};
     const QString message;
     const QString type;
     const ErrorLevel level = ErrorLevel::Log;
     static Log write(QString t="", QString m="");
+    static Log buffer(QString t="", QString m="");
     void write() const;
+    void buffer() const;
     friend QDebug operator<<(QDebug debug, const Log &log) {
         QDebugStateSaver saver(debug);
         debug.nospace().noquote() << log.type << "(\"" << log.message << "\")";
+        return debug;
+    }
+};
+
+class Check : public Loggable{
+public:
+    Check(QString cN = "Check", QString m = "OK", CheckLevel c = CheckLevel::OK) : Loggable(QDateTime::currentDateTimeUtc()), checkName(cN), message(m), clevel(c) {};
+    Check(QString cN = "Check", CheckLevel c = CheckLevel::OK) : Loggable(QDateTime::currentDateTimeUtc()), checkName(cN), clevel(c) {
+        switch (clevel) {
+            case CheckLevel::FAIL:
+                message = "FAIL";
+                break;
+            case CheckLevel::OK:
+                message = " OK ";
+                break;
+            case CheckLevel::WARN:
+                message = "WARN";
+                break;
+        }
+    };
+    const QString checkName;
+    QString message;
+    const CheckLevel clevel;
+    const ErrorLevel elevel = ErrorLevel::Cond;
+    static Check write(QString cN = "Check", QString m = "OK", CheckLevel c = CheckLevel::OK);
+    static Check write(QString cN = "Check", CheckLevel c = CheckLevel::OK);
+    void buffer() const;
+    void write() const;
+    friend QDebug operator<<(QDebug debug, const Check &check) {
+        QDebugStateSaver saver(debug);
+        debug.nospace().noquote() << check.checkName << "(\"" << check.message << "\")";
         return debug;
     }
 };
@@ -135,5 +185,7 @@ template<typename T>
 using Eo = ErrorOption<T>;
 
 using El = ErrorLevel;
+
+using Cl = CheckLevel;
 
 #endif // ERRORHANDLER_H

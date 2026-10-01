@@ -73,8 +73,10 @@ int main(int argc, char *argv[])
     auto config = readJsonFile(QDir(QCoreApplication::applicationDirPath()).filePath("configuration.json"), CONFIG_MAX_SIZE);
     if (config.isError()) {
         config.softHandle();
+        Check::write("Config file configuration.json loaded", Cl::FAIL);
         Error("ConfigError", "Failed to load configuration file", El::Fatal).handle();
     } else {
+        Check::write("Config file configuration.json loaded", Cl::OK);
         bk.loadConfig(config.get());
     }
 

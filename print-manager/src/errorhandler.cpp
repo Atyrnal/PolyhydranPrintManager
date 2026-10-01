@@ -13,6 +13,12 @@ Error Error::softHandle(QString t, QString m, ErrorLevel l) {
     return _new;
 };
 
+Error Error::buffer(QString t, QString m, ErrorLevel l) {
+    Error _new = Error(t, m, l);
+    if (_new.isError()) ErrorHandler::buffer(_new);
+    return _new;
+};
+
 void Error::handle() const {
     if (this->isError()) ErrorHandler::handle(*this);
 };
@@ -46,12 +52,66 @@ void ErrorHandler::writeToFile(const QString &line) {
 }
 
 void ErrorHandler::softHandle(const Error &err) {
+    if (bufferingAll) return buffer(err);
     if (!err.isError()) return;
     printLn(err);
 }
 
+void ErrorHandler::buffer(const Error &l) {
+    buf.enqueue(QSharedPointer<Error>::create(l));
+}
+void ErrorHandler::buffer(const class Log &l) {
+    buf.enqueue(QSharedPointer<class Log>::create(l));
+}
+void ErrorHandler::buffer(const class Check &l) {
+    buf.enqueue(QSharedPointer<Check>::create(l));
+}
+
+
+void ErrorHandler::flush() {
+    bool prev = bufferingAll;
+    bufferingAll = false;
+    while (!buf.isEmpty()) {
+        QSharedPointer<Loggable> l = buf.dequeue();
+
+        if (auto e = l.dynamicCast<Error>()) {
+            e->softHandle();
+        } else if (auto g = l.dynamicCast<class Log>()) {
+            ErrorHandler::log(*g);
+        } else if (auto c = l.dynamicCast<Check>()) {
+            ErrorHandler::check(*c);
+        }
+    }
+    bufferingAll = prev;
+}
+
+void Error::buffer() const {
+    if (!this->isError()) return;
+    ErrorHandler::buffer(*this);
+}
+
+void Check::write() const {
+    ErrorHandler::check(*this);
+}
+
+void Check::buffer() const {
+    ErrorHandler::buffer(*this);
+}
+
 void Log::write() const {
     ErrorHandler::log(*this);
+}
+
+void Log::buffer() const {
+    ErrorHandler::buffer(*this);
+}
+
+void ErrorHandler::bufferAll() {
+    bufferingAll = true;
+}
+
+void ErrorHandler::stopBufferingAll() {
+    bufferingAll = false;
 }
 
 class Log Log::write(QString t, QString m) {
@@ -60,8 +120,26 @@ class Log Log::write(QString t, QString m) {
     return _new;
 }
 
+class Log Log::buffer(QString t, QString m) {
+    Log _new = Log(t, m);
+    ErrorHandler::buffer(_new);
+    return _new;
+}
+
+class Check Check::write(QString cN, QString m, CheckLevel c) {
+    Check _new = Check(cN, m, c);
+    ErrorHandler::check(_new);
+    return _new;
+}
+class Check Check::write(QString cN, CheckLevel c) {
+    Check _new = Check(cN, c);
+    ErrorHandler::check(_new);
+    return _new;
+}
+
 void ErrorHandler::handle(const Error &err) {
     if (!err.isError()) return;
+    if (bufferingAll && err.level <= El::Warning) return buffer(err);
     printLn(err);
     switch(err.level) {
     default:
@@ -81,28 +159,56 @@ void ErrorHandler::handle(const Error &err) {
 }
 
 void ErrorHandler::log(const class Log &log) {
-    QString line = genLogLineLog(log.type, log.message);
+    if (bufferingAll) return buffer(log);
+    QString line = genLogLineLog(log.crTime, log.type, log.message);
     writeToFile(line);
     qDebug().noquote().nospace() << line << "\033[0m";
 }
 
-
-QString ErrorHandler::genLogLine(const QString &lvl, const QString &content) {
-    return QDateTime::currentDateTimeUtc().toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + lvl + " [ErrorHandler]: " + content;
+void ErrorHandler::check(const class Check &check) {
+    QPair<QString, QString> line = genLogLineCheck(check.crTime, check.checkName, check.message, check.clevel);
+    writeToFile(line.second);
+    qDebug().noquote().noquote() << line.first << "\033[0m";
 }
 
-QString ErrorHandler::genLogLineLog(const QString &type, const QString &content) {
-    return QDateTime::currentDateTimeUtc().toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + "LOG  " + " ["+type+"]: " + content;
+QString ErrorHandler::genLogLine(QDateTime time, const QString &lvl, const QString &content) {
+    return time.toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + lvl + " [ErrorHandler]: " + content;
 }
 
-void ErrorHandler::printLn(ErrorLevel lvl, const QString &content) {
+QString ErrorHandler::genLogLineLog(QDateTime time, const QString &type, const QString &content) {
+    return time.toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + "LOG  " + " ["+type+"]: " + content;
+}
+
+QPair<QString, QString> ErrorHandler::genLogLineCheck(QDateTime time, const QString &checkName, const QString &message, CheckLevel clevel) {
+    QString str = time.toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + "CHECK" + " " + checkName.leftJustified(50) + " \t [";
+    QString str2 = QString(str);
+    QString centered = message.rightJustified((8 + message.size()) / 2).leftJustified(8);
+
+    // "  hello   "
+    switch (clevel) {
+        case Cl::FAIL:
+            str += "\033[31m";
+            break;
+        case Cl::WARN:
+            str += "\033[33m";
+            break;
+        case Cl::OK:
+            str += "\033[32m";
+            break;
+    }
+    str += centered + "\033[0m]";
+    str2 += centered + "]";
+    return QPair(str, str2);
+}
+
+void ErrorHandler::printLn(QDateTime time, ErrorLevel lvl, const QString &content) {
     QString lvlindicator;
     QString line;
     switch (lvl) {
     default:
     case El::None:
         lvlindicator = "NONE ";
-        line = genLogLine(lvlindicator, content);
+        line = genLogLine(time, lvlindicator, content);
         writeToFile(line);
         qDebug().noquote().nospace() << line  << "\033[0m";
         break;
@@ -110,31 +216,31 @@ void ErrorHandler::printLn(ErrorLevel lvl, const QString &content) {
         break;
     case El::Debug:
         lvlindicator = "DEBUG";
-        line = genLogLine(lvlindicator, content);
+        line = genLogLine(time, lvlindicator, content);
         writeToFile(line);
         qDebug().noquote().nospace() << line << "\033[0m";
         break;
     case El::Trivial:
         lvlindicator = "TRIV ";
-        line = genLogLine(lvlindicator, content);
+        line = genLogLine(time, lvlindicator, content);
         writeToFile(line);
         qInfo().noquote().nospace() << line << "\033[0m";
         break;
     case El::Warning:
         lvlindicator = "WARN ";
-        line = genLogLine(lvlindicator, content);
+        line = genLogLine(time, lvlindicator, content);
         writeToFile(line);
         qWarning().noquote().nospace() << "\033[33m" << line << "\033[0m";
         break;
     case El::Critical:
         lvlindicator = "CRIT ";
-        line = genLogLine(lvlindicator, content);
+        line = genLogLine(time, lvlindicator, content);
         writeToFile(line);
         qCritical().noquote().nospace() << "\033[31m" << line << "\033[0m";
         break;
     case El::Fatal:
         lvlindicator = "FATAL";
-        line = genLogLine(lvlindicator, content);
+        line = genLogLine(time, lvlindicator, content);
         writeToFile(line);
         qFatal().noquote().nospace() << "\033[41m" << line << "\033[0m";
         break;
@@ -142,5 +248,5 @@ void ErrorHandler::printLn(ErrorLevel lvl, const QString &content) {
 };
 
 void ErrorHandler::printLn(const Error &err) {
-    printLn(err.level, err.type + ": " + err.errorString);
+    printLn(err.crTime, err.level, err.type + ": " + err.errorString);
 }

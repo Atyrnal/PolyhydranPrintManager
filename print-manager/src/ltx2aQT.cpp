@@ -5,7 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-#include <errors.hpp>
+#include "errors.hpp"
 
 LTx2A::LTx2A(QString portName, qint32 baud) {
     scanned = QQueue<QString>();
@@ -21,7 +21,7 @@ void LTx2A::start() {
         emit cardScanned(); //Emit the cardScanned event (called a signal in QT)
     });
     QObject::connect(worker, &SerialWorker::errorOccurred, [](const QString &error) {
-        qWarning() << "Serial Error Occurred: " << error; //Print error
+        Error::handle("SerialError", error, El::Critical); //Print error
     });
     thread->start(); //Run the thread
 }
@@ -68,6 +68,7 @@ void SerialWorker::start() {
 
     }
     if (port == nullptr || port->isNull()) { //If port not found
+        Check::write("Connect to RFID Scanner serial", Cl::FAIL);
         emit errorOccurred("Matching Serial port not found"); //Send error event
         return;
     }
@@ -82,12 +83,17 @@ void SerialWorker::start() {
 
     connect(serial, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead); //Handle reading
     connect(serial, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError err) { //Handle errors from serial port
-        if (err != QSerialPort::NoError) emit errorOccurred(serial->errorString()); //Send error event
+        if (err != QSerialPort::NoError) {
+            Check::write("Connect to RFID Scanner serial", Cl::FAIL);
+            emit errorOccurred(serial->errorString()); //Send error event
+        }
     });
 
     if (!serial->open(QIODevice::ReadOnly)) { //Open serial connection as read only
+        Check::write("Connect to RFID Scanner serial", Cl::FAIL);
         emit errorOccurred(serial->errorString()); //Handle error opening connection
     }
+    Check::write("Connect to RFID Scanner serial", Cl::OK);
 }
 
 void SerialWorker::stop() {
