@@ -11,6 +11,7 @@
 #include <QTimer>
 #include <QSslKey>
 #include <gcodeparser.h>
+#include "globalstate.hpp"
 #ifndef Q_OS_WIN
 #include <QStandardPaths>
 #endif
@@ -40,26 +41,26 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     } else {
         Check::write("Config file mosq.conf generated", Cl::OK);
     }
-    if (!QFile::exists("ca.crt")) {
-        Check::write("Config file ca.crt exists", Cl::FAIL);
-        Error::buffer("ConfigError", "Missing ca.crt certificate file", El::Critical);
+    if (!QFile::exists(stnsd("mosqCaCertFile","ca.crt"))) {
+        Check::write("Config file ca cert exists", Cl::FAIL);
+        Error::buffer("ConfigError", QString("Missing ca cert certificate file %1").arg(stnsd("mosqCaCertFile","ca.crt")), El::Critical);
         good = false;
     } else {
-        Check::write("Config file ca.crt exists", Cl::OK);
+        Check::write("Config file ca cert exists", Cl::OK);
     }
-    if (!QFile::exists("server.crt")) {
-        Check::write("Config file server.crt exists", Cl::FAIL);
-        Error::buffer("ConfigError", "Missing server.crt certificate file", El::Critical);
+    if (!QFile::exists(stnsd("mosqServerCertFile", "server.crt"))) {
+        Check::write("Config file server cert exists", Cl::FAIL);
+        Error::buffer("ConfigError", QString("Missing server cert certificate file %1").arg(stnsd("mosqServerCertFile", "server.crt")), El::Critical);
         good = false;
     } else {
-        Check::write("Config file server.crt exists", Cl::OK);
+        Check::write("Config file server cert exists", Cl::OK);
     }
-    if (!QFile::exists("server.key")) {
-        Check::write("Config file server.key exists", Cl::FAIL);
-        Error::buffer("ConfigError", "Missing server.key private key file", El::Critical);
+    if (!QFile::exists(stnsd("mosqServerKeyFile", "server.key"))) {
+        Check::write("Config file server private key exists", Cl::FAIL);
+        Error::buffer("ConfigError", "Missing server private key file " + stnsd("mosqServerKeyFile", "server.key"), El::Critical);
         good = false;
     } else {
-        Check::write("Config file server.key exists", Cl::OK);
+        Check::write("Config file server private key exists", Cl::OK);
     }
 
     if (!QFile::exists("mqpasswd")) {
@@ -78,11 +79,14 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     }
 
     //Check mosquitto installation
-    #ifdef Q_OS_WIN
-        QString mosquitoPath = "C:/Program Files/Mosquitto/mosquitto.exe";
-    #else
-        QString mosquitoPath = "/usr/bin/mosquitto";
-    #endif
+    QString mosquitoPath = stns("mosquittoExec");
+    if (mosquitoPath == "") {
+        #ifdef Q_OS_WIN
+            mosquitoPath = "C:/Program Files/Mosquitto/mosquitto.exe";
+        #else
+            mosquitoPath = "/usr/bin/mosquitto";
+        #endif
+    }
     if (!QFile::exists(mosquitoPath)) {
         Check::write("Dependency Mosquitto installation found", Cl::FAIL);
         Error::buffer("BambuEmulatorSetupError", "Failed to locate mosquitto installation at " + mosquitoPath, El::Critical);
@@ -92,14 +96,19 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     }
 
     //check OrcaSlicer trusted certs
-    QString exe = QStandardPaths::findExecutable("orca-slicer");
-    if (exe.isEmpty())
-        exe = QStandardPaths::findExecutable("OrcaSlicer");
-    if (exe.isEmpty())
-        exe = QStandardPaths::findExecutable("orcaslicer");
-    if (exe.isEmpty())
-        exe = "/opt/orca-slicer/bin/orca-slicer";
-    //exe = "/usr/bin/orca-slicer"; // fallback
+    QString exe;
+    if (stns("orcaSlicerExec") != "") {
+        exe = stns("orcaSlicerExec");
+    } else {
+        exe = QStandardPaths::findExecutable("orca-slicer");
+        if (exe.isEmpty())
+            exe = QStandardPaths::findExecutable("OrcaSlicer");
+        if (exe.isEmpty())
+            exe = QStandardPaths::findExecutable("orcaslicer");
+        if (exe.isEmpty())
+            exe = "/opt/orca-slicer/bin/orca-slicer";
+    }
+
     if (!QFile::exists(exe)) {
         Check::write("Optional dependency OrcaSlicer installation found", "FAIL", Cl::WARN);
         Error::buffer("BambuEmulatorSetupError", "Unable to find OrcaSlicer instance. Please ensure the certificates are installed.", El::Warning);
@@ -111,10 +120,10 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     // QDir dir = QFileInfo(exe).absoluteDir();
     // dir.cdUp();
     // QString pcerpath = dir.filePath("resources/cert/printer.cer");
-    QString pcerpath = "/opt/orca-slicer/resources/cert/printer.cer";
-    if (!QFile::exists(pcerpath)) {
-        pcerpath = "/opt/OrcaSlicer/resources/cert/printer.cer";
-    }
+    QString pcerpath = stns("orcaSlicerDir") + "/resources/cert/printer.cer";
+    // if (!QFile::exists(pcerpath)) {
+    //     pcerpath = "/opt/OrcaSlicer/resources/cert/printer.cer";
+    // }
     if (!QFile::exists(pcerpath)) {
         Check::write("Program CA certs installed to OrcaSlicer", "FAIL", Cl::WARN);
         Error::buffer("BambuEmulatorSetupError", QString("Unable to locate OrcaSlicer certificate store file at %1. Please ensure the certificates are installed.").arg(pcerpath), El::Warning);
@@ -123,7 +132,7 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
 
     if (good) {
         QFile pcer(pcerpath);
-        QFile cacrt("ca.crt");
+        QFile cacrt(stnsd("mosqCaCertFile", "ca.crt"));
         if (!pcer.open(QFile::ReadOnly) || !cacrt.open(QFile::ReadOnly)) return false;
 
         const QByteArray outerData = pcer.readAll();
@@ -165,9 +174,9 @@ bool BambuEmulator::genMosquittoConfig(QString path, quint8 printerCount) {
     for (quint8 i = 0U; i < printerCount+1; i++) {
         out << QString("listener 8883 127.0.0.%1\n").arg(i+1);
         out << "protocol mqtt\n";
-        out << "cafile ca.crt\n";
-        out << "certfile server.crt\n";
-        out << "keyfile server.key\n";
+        out << QString("cafile %1\n").arg(stnsd("mosqCaCertFile", "ca.crt"));
+        out << QString("certfile %1\n").arg(stnsd("mosqServerCertFile", "server.crt"));
+        out << QString("keyfile %1\n").arg(stnsd("mosqServerKeyFile", "server.key"));
         out << "require_certificate false\n\n";
     }
 
@@ -179,11 +188,14 @@ void BambuEmulator::startMosquitto() {
     mosquito = new QProcess(parent());
     mqtt = new QMqttClient();
 
-    #ifdef Q_OS_WIN
-    QString mosquitoPath = "C:/Program Files/Mosquitto/mosquitto.exe";
-    #else
-    QString mosquitoPath = "/usr/bin/mosquitto";
-    #endif
+    QString mosquitoPath = stns("mosquittoExec");
+    if (mosquitoPath == "") {
+        #ifdef Q_OS_WIN
+            mosquitoPath = "C:/Program Files/Mosquitto/mosquitto.exe";
+        #else
+            mosquitoPath = "/usr/bin/mosquitto";
+        #endif
+    }
     QString configPath = QDir(QCoreApplication::applicationDirPath()).filePath("mosq.conf");
 
     //Start mosquitto instance

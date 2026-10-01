@@ -63,7 +63,6 @@ public:
     // Eo<QList<QMap<QString, QVariant>>> queryDatabaseMultirow(const QString &query, const QMap<QString, QVariant> &values);
 protected:
     QJsonObject config;
-    QMap<QString, QVariant> settings;
     //Services
     //QSqlDatabase db;
     AirtableBase* airtable;

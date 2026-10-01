@@ -17,6 +17,7 @@
 #include "ltx2aQT.h"
 #include <QCoreApplication>
 #include <QTimer>
+#include "globalstate.hpp"
 
 #ifndef Q_OS_WIN
 #include <QStandardPaths>
@@ -25,14 +26,6 @@
 #define PRINTING_CERT_ID "recY34WO6fex1KMxO"
 
 #define APP_VERSION "0.1.0-alpha9"
-
-//Settings macros
-#define stnb(sname) settings.value((sname), false).toBool()
-#define stnbd(sname, def) settings.value((sname), (def)).toBool()
-#define stns(sname) settings.value((sname), "").toString()
-#define stnsd(sname, def) settings.value((sname), (def)).toString()
-#define stnd(sname) settings.value((sname), 0.0).toDouble()
-#define stndd(sname, def) settings.value((sname), (def)).toDouble()
 
 QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
     ErrorHandler::bk = this;
@@ -229,20 +222,32 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
         Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
     }
     #else
-    QString exe = QStandardPaths::findExecutable("orca-slicer");
-    if (exe.isEmpty())
-        exe = QStandardPaths::findExecutable("OrcaSlicer");
-    if (exe.isEmpty())
-        exe = QStandardPaths::findExecutable("orcaslicer");
-    if (exe.isEmpty())
-        exe = "/opt/orca-slicer/bin/orca-slicer";
-        //exe = "/usr/bin/orca-slicer"; // fallback
-    if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
-        Log::write("QtBackend", "Launching OrcaSlicer instance");
-        QProcess::startDetached(exe);
+    QString exe;
+    if (stns("orcaSlicerExec") != "") {
+        exe = stns("orcaSlicerExec");
+        if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
+            Log::write("QtBackend", "Launching OrcaSlicer instance");
+            QProcess::startDetached(exe);
+        } else {
+            Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+        }
     } else {
-        Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+        exe = QStandardPaths::findExecutable("orca-slicer");
+        if (exe.isEmpty())
+            exe = QStandardPaths::findExecutable("OrcaSlicer");
+        if (exe.isEmpty())
+            exe = QStandardPaths::findExecutable("orcaslicer");
+        if (exe.isEmpty())
+            exe = "/opt/orca-slicer/bin/orca-slicer";
+        //exe = "/usr/bin/orca-slicer"; // fallback
+        if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
+            Log::write("QtBackend", "Launching OrcaSlicer instance");
+            QProcess::startDetached(exe);
+        } else {
+            Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+        }
     }
+
     #endif
 
 }
@@ -272,6 +277,7 @@ void QTBackend::loadConfig(QJsonObject cfg) {
     //Load settings
     if (config.contains("settings") && config.value("settings").isObject()) {
         QJsonObject settingsc = config.value("settings").toObject();
+        QMap<QString, QVariant> settings;
         for (auto it = settingsc.constBegin(); it != settingsc.constEnd(); ++it) {
             QString key = it.key();
             QVariant val = it.value().toVariant();
@@ -280,6 +286,7 @@ void QTBackend::loadConfig(QJsonObject cfg) {
             if (val.canConvert<QString>()) Check::write("Setting " + it.key() + " value", val.toString().toUpper(), cll);
             else Check::write("Setting " + it.key(), "FOUND", cll);
         }
+        GlobalState::instance().loadSettings(settings);
     }
 
     //Load specific settings

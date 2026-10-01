@@ -24,6 +24,9 @@ qt_add_qml_module(appPolyhydranPrintManager
     QML_FILES  ${QML_SOURCE_FILES}
     RESOURCES  ${RESOURCE_FILES}
     SOURCES    ${HEADER_FILES} ${CPP_SOURCE_FILES}
+    SOURCES include/globalstate.hpp
+    SOURCES
+    SOURCES src/globalstate.cpp
 )
 
 qt_import_qml_plugins(appPolyhydranPrintManager)
