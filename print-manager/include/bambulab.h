@@ -160,7 +160,6 @@ signals:
     void ready();
     void certLoaded();
 protected:
-    QString hostname;
     QString accessCode;
     quint16 port;
     QString username;

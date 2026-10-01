@@ -44,6 +44,10 @@ QString Printer::getBrand() {
     return this->brand;
 }
 
+QString Printer::getHostname() {
+    return this->hostname;
+}
+
 bool Printer::getConnectionStatus() {
     return this->connectionStatus;
 }

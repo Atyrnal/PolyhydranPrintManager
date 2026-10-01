@@ -7,12 +7,172 @@
 #include <QTcpServer>
 #include <QNetworkDatagram>
 #include "errors.hpp"
+#include "errorhandler.hpp"
 #include <QTimer>
 #include <QSslKey>
 #include <gcodeparser.h>
+#ifndef Q_OS_WIN
+#include <QStandardPaths>
+#endif
 
-BambuEmulator::BambuEmulator(QObject* parent) : QObject(parent) {
-    startMosquitto();
+BambuEmulator::BambuEmulator(quint8 printerCount, QObject* parent) : QObject(parent) {
+    setupOk = setupCheck(printerCount);
+    if (!setupOk) Error::handle("BambuEmulatorConfigError", "Unable to load BambuLab printers due to invalid configuration", El::Critical);
+}
+
+bool BambuEmulator::start() {
+    if (setupOk) startMosquitto();
+    return setupOk;
+}
+
+bool BambuEmulator::isOk() const {
+    return setupOk;
+}
+
+bool BambuEmulator::setupCheck(quint8 printerCount) {
+    bool good = true;
+    //Check mosq.conf and related files
+    QString configPath = "mosq.conf";
+    if (/*!QFile::exists(configPath) &&*/ !genMosquittoConfig(configPath, printerCount)) {
+        Check::write("Config file mosq.conf generated", Cl::FAIL);
+        Error::buffer("ConfigGeneratorError", "Failed to generate mosq.conf file", El::Critical);
+        good = false;
+    } else {
+        Check::write("Config file mosq.conf generated", Cl::OK);
+    }
+    if (!QFile::exists("ca.crt")) {
+        Check::write("Config file ca.crt exists", Cl::FAIL);
+        Error::buffer("ConfigError", "Missing ca.crt certificate file", El::Critical);
+        good = false;
+    } else {
+        Check::write("Config file ca.crt exists", Cl::OK);
+    }
+    if (!QFile::exists("server.crt")) {
+        Check::write("Config file server.crt exists", Cl::FAIL);
+        Error::buffer("ConfigError", "Missing server.crt certificate file", El::Critical);
+        good = false;
+    } else {
+        Check::write("Config file server.crt exists", Cl::OK);
+    }
+    if (!QFile::exists("server.key")) {
+        Check::write("Config file server.key exists", Cl::FAIL);
+        Error::buffer("ConfigError", "Missing server.key private key file", El::Critical);
+        good = false;
+    } else {
+        Check::write("Config file server.key exists", Cl::OK);
+    }
+
+    if (!QFile::exists("mqpasswd")) {
+        QFile passwd = QFile("mqpasswd");
+        if (!passwd.open(QFile::WriteOnly)) {
+            Check::write("Config file mqpasswd exists", Cl::FAIL);
+            Error::buffer("ConfigGeneratorError", "Failed to generate mqpasswd password file", El::Critical);
+            good = false;
+        }
+        QTextStream out(&passwd);
+        out << "bblp:$7$101$rFEXwUCe92wG5pXl$cYJkGJFAPtOBJZUzVtG+gyZNduuSHm/nlaVJ3KN9c5MzxWnjWkwBSye3IcrDZTCyJ3nHhucOELkaoGGz7NA3yA=="; //00000001
+        passwd.close();
+        Check::write("Config file mqpasswd exists", Cl::OK);
+    } else {
+        Check::write("Config file mqpasswd exists", Cl::OK);
+    }
+
+    //Check mosquitto installation
+    #ifdef Q_OS_WIN
+        QString mosquitoPath = "C:/Program Files/Mosquitto/mosquitto.exe";
+    #else
+        QString mosquitoPath = "/usr/bin/mosquitto";
+    #endif
+    if (!QFile::exists(mosquitoPath)) {
+        Check::write("Dependency Mosquitto installation found", Cl::FAIL);
+        Error::buffer("BambuEmulatorSetupError", "Failed to locate mosquitto installation at " + mosquitoPath, El::Critical);
+        good = false;
+    } else {
+        Check::write("Dependency Mosquitto installation found", Cl::OK);
+    }
+
+    //check OrcaSlicer trusted certs
+    QString exe = QStandardPaths::findExecutable("orca-slicer");
+    if (exe.isEmpty())
+        exe = QStandardPaths::findExecutable("OrcaSlicer");
+    if (exe.isEmpty())
+        exe = QStandardPaths::findExecutable("orcaslicer");
+    if (exe.isEmpty())
+        exe = "/opt/orca-slicer/bin/orca-slicer";
+    //exe = "/usr/bin/orca-slicer"; // fallback
+    if (!QFile::exists(exe)) {
+        Check::write("Optional dependency OrcaSlicer installation found", "FAIL", Cl::WARN);
+        Error::buffer("BambuEmulatorSetupError", "Unable to find OrcaSlicer instance. Please ensure the certificates are installed.", El::Warning);
+        return good;
+    } else {
+        Check::write("Optional dependency OrcaSlicer installation found", Cl::OK);
+    }
+
+    // QDir dir = QFileInfo(exe).absoluteDir();
+    // dir.cdUp();
+    // QString pcerpath = dir.filePath("resources/cert/printer.cer");
+    QString pcerpath = "/opt/orca-slicer/resources/cert/printer.cer";
+    if (!QFile::exists(pcerpath)) {
+        pcerpath = "/opt/OrcaSlicer/resources/cert/printer.cer";
+    }
+    if (!QFile::exists(pcerpath)) {
+        Check::write("Program CA certs installed to OrcaSlicer", "FAIL", Cl::WARN);
+        Error::buffer("BambuEmulatorSetupError", QString("Unable to locate OrcaSlicer certificate store file at %1. Please ensure the certificates are installed.").arg(pcerpath), El::Warning);
+        return good;
+    }
+
+    if (good) {
+        QFile pcer(pcerpath);
+        QFile cacrt("ca.crt");
+        if (!pcer.open(QFile::ReadOnly) || !cacrt.open(QFile::ReadOnly)) return false;
+
+        const QByteArray outerData = pcer.readAll();
+        const QByteArray innerData = cacrt.readAll();
+
+        if (!innerData.isEmpty() && outerData.contains(innerData)) {
+            Check::write("Program CA certs installed to OrcaSlicer", Cl::OK);
+        } else {
+            Check::write("Program CA certs installed to OrcaSlicer", "FAIL", Cl::WARN);
+            Error::buffer("BambuEmulatorSetupError", "CA certificate not registered with OrcaSlicer. Please ensure the certificates are installed.", El::Warning);
+            return good;
+        }
+    }
+
+    ErrorHandler::flush();
+    return good;
+}
+
+bool BambuEmulator::genMosquittoConfig(QString path, quint8 printerCount) {
+    QFile conf = QFile(path);
+    if (!conf.open(QFile::WriteOnly)) {
+
+        return false;
+    }
+
+    QTextStream out(&conf);
+
+    out<<"# Basic Mosquitto config for BambuLab printer emulation\n";
+    out<<"persistence false\n";
+    out<<"password_file mqpasswd\n";
+    out<<"allow_anonymous false\n";
+    out<<"connection_messages true\n";
+    out<<"log_timestamp true\n";
+    out<<"log_type all\n";
+    out<<"message_size_limit 100000000\n";
+    out<<"max_packet_size 100000000\n";
+    out<<"# MQTT (SSL/TLS) Listener – OrcaSlicer will use this\n";
+
+    for (quint8 i = 0U; i < printerCount+1; i++) {
+        out << QString("listener 8883 127.0.0.%1\n").arg(i+1);
+        out << "protocol mqtt\n";
+        out << "cafile ca.crt\n";
+        out << "certfile server.crt\n";
+        out << "keyfile server.key\n";
+        out << "require_certificate false\n\n";
+    }
+
+    conf.close();
+    return true;
 }
 
 void BambuEmulator::startMosquitto() {
@@ -40,7 +200,7 @@ void BambuEmulator::startMosquitto() {
     // QObject::connect(mosquito, &QProcess::readyReadStandardError, this, [this](){
     //     qWarning() << "[mosq/err]" << this->mosquito->readAllStandardError();
     // });
-    QObject::connect(mosquito, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), [](int code, QProcess::ExitStatus){ Error("BambuEmulatorError", "Mosquitto exited " + QString::number(code), El::Critical).handle(); });
+    QObject::connect(mosquito, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), [](int code, QProcess::ExitStatus){ Error("BambuEmulatorError", "Mosquitto exited " + QString::number(code), El::Warning).handle(); });
 
     QObject::connect(mqtt, &QMqttClient::connected, this, [this](){
         mqtt->subscribe(BambuEmulator::requestFilter);
@@ -334,7 +494,7 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
             //Log::write("BambuEmulator", "RealIp:" + QString::number(realIp) + " FakeIp:" + QString::number(fakeIp));
             message.replace(QString::number(realIp).toUtf8(), QString::number(fakeIp).toUtf8());
             message.replace(printer->hostname.toUtf8(), printer->virtualIP.toUtf8()); //Filter out real IP from all requests
-            mqtt->publish(topic, message);
+            if (mqtt) mqtt->publish(topic, message);
         });
 
 
@@ -616,9 +776,9 @@ void BambuEmulator::removePrinter(quint32 id) {
 }
 
 void BambuEmulator::closing() {
-    mosquito->kill();
+    if (mosquito) mosquito->kill();
 }
 
 BambuEmulator::~BambuEmulator() {
-    mosquito->kill();
+    if (mosquito) mosquito->kill();
 }

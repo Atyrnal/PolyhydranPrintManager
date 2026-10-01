@@ -24,7 +24,7 @@
 
 #define PRINTING_CERT_ID "recY34WO6fex1KMxO"
 
-#define APP_VERSION "0.1.0-alpha8"
+#define APP_VERSION "0.1.0-alpha9"
 
 QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
     ErrorHandler::bk = this;
@@ -61,9 +61,9 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
 
 
 
-    QTimer::singleShot(5000, this, [this](){
-        root->setProperty("appstate", AppState::Loading+1);
-    });
+    // QTimer::singleShot(5000, this, [this](){
+    //     root->setProperty("appstate", AppState::Loading+1);
+    // });
 
 
 
@@ -250,9 +250,16 @@ void QTBackend::loadConfig(QJsonObject cfg) {
     config = cfg;
     pm->loadConfig(cfg);
     //TODO: Implement some sort of abstraction to allow program to work with any database
-    if (!config.contains("airtable") || !config.value("airtable").isObject()) return Error("ConfigError", "Missing Airtable Credentials", El::Fatal).handle();
+    if (!config.contains("airtable") || !config.value("airtable").isObject()) {
+        Check::write("Credentials for Airtable loaded", Cl::FAIL);
+        return Error("ConfigError", "Missing Airtable Credentials", El::Fatal).handle();
+    }
     QJsonObject airtablec = config.value("airtable").toObject();
-    if (!airtablec.contains("hostname") || !airtablec.contains("key") || !airtablec.contains("base") || !airtablec.value("hostname").isString() || !airtablec.value("key").isString() || !airtablec.value("base").isString()) return Error("ConfigError", "Missing Airtable Credentials", El::Fatal).handle();
+    if (!airtablec.contains("hostname") || !airtablec.contains("key") || !airtablec.contains("base") || !airtablec.value("hostname").isString() || !airtablec.value("key").isString() || !airtablec.value("base").isString()) {
+        Check::write("Credentials for Airtable loaded", Cl::FAIL);
+        return Error("ConfigError", "Missing Airtable Credentials", El::Fatal).handle();
+    }
+    Check::write("Credentials for Airtable loaded", Cl::OK);
     airtable = new AirtableBase(airtablec.value("hostname").toString(), airtablec.value("key").toString(), airtablec.value("base").toString(), this);
 }
 

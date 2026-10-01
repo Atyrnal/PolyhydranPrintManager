@@ -14,6 +14,7 @@
 #include "errors.hpp"
 #include <QTimer>
 
+
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}
 
 BambuLab::BambuLab(QString name, QString model, QString hostname, QString accessCode, QString username, quint16 port, QObject* parent) : Printer(name, model, "BambuLab", parent) {
@@ -49,6 +50,7 @@ void BambuLab::loadCertificate(Func callback) {
             Log::write("BambuLabPrinter("+name+"@"+hostname+")", "Loaded certificates; Serial number: " + virtualSN);
             (this->*callback)();
         } else {
+            emit this->connectionUpdated(false);
             Error::handle("BambuCertFetchError", "SSL Chain for printer " + name + " too short", El::Warning);
         }
         socket->deleteLater();
@@ -56,6 +58,7 @@ void BambuLab::loadCertificate(Func callback) {
     socket->connectToHostEncrypted(hostname, port);
     QTimer::singleShot(10000, this, [this, socket](){
         if (certificate.isNull() && !socket->isEncrypted()) {
+            emit this->connectionUpdated(false);
             Error::handle("BambuLabPrinterConnectionError", "Unable to connect to printer " + name, El::Warning);
         }
     });
@@ -301,7 +304,7 @@ void BambuLab::updateState(QByteArray latestReportBytes) {
     else jobStatus = JobStatus::Error;
 
     if (jobState != prev && prev != "UNDEFINED") { //Switch state
-        //Log::write("BambuLabPrinter("+name+"@"+hostname+")", QString("jobState updated from %1 to %2").arg(prev, jobState));
+        Log::write("BambuLabPrinter("+name+"@"+hostname+")", QString("jobState updated from %1 to %2").arg(prev, jobState));
         if (jobState == "RUNNING") {
             if (prev == "PAUSED") //update latest print back to ongoing
                 emit this->printStatusUpdated("Ongoing");

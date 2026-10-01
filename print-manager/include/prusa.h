@@ -24,7 +24,6 @@ public:
     void setApiKey(QString apiKey);
     Printer::JobStatus getJobStatus() override;
 protected:
-    QString hostname;
     QString apiKey;
     QString storageType;
     void testConnection();

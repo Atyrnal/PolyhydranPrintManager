@@ -12,8 +12,11 @@
 class BambuEmulator : public QObject {
     Q_OBJECT
 public:
-    BambuEmulator(QObject* parent = nullptr);
+    BambuEmulator(quint8 printerCount, QObject* parent = nullptr);
     ~BambuEmulator();
+    bool setupCheck(quint8 printerCount);
+    bool start();
+    bool isOk() const;
     void addPrinter(quint32 id, BambuLab* printer);
     void removePrinter(quint32 id);
     void closing();
@@ -23,9 +26,11 @@ private:
     QMap<QString, BambuLab*> printers;
     QMap<quint32, QString> SNs;
     QMap<QString, quint32> ids;
-    QProcess* mosquito;
-    QMqttClient* mqtt;
+    QProcess* mosquito = nullptr;
+    QMqttClient* mqtt = nullptr;
     static const inline QMqttTopicFilter requestFilter {"device/+/request"};
+    bool genMosquittoConfig(QString path, quint8 printerCount);
+    bool setupOk = false;
     void startMosquitto();
     void connectToMosquitto();
     void ftpsController(QTcpSocket* socket, BambuLab* printere);

@@ -1,6 +1,8 @@
 #include "printermanager.h"
 #include "prusa.h"
 #include "bambulab.h"
+#include "errorhandler.hpp"
+#include <QTimer>
 
 PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
 }
@@ -19,6 +21,17 @@ PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
 
 void PrinterManager::loadConfig(QJsonObject config){
     QJsonArray prntrs = config.value("printers").toArray();
+    printerCount = prntrs.size();
+    ErrorHandler::bufferAll();
+    QTimer::singleShot(60000, this, [this](){
+        if (respondedPrinters.size() < printerCount) {
+            Check::write("Printer configuration loaded", Cl::WARN);
+            ErrorHandler::stopBufferingAll();
+            ErrorHandler::flush();
+            Error::softHandle("BambuEmulatorConfigError", QString("Timed out waiting for %1 printer connection responses").arg(printerCount - respondedPrinters.size()), El::Warning);
+        }
+    });
+
     for (int i = 0; i < prntrs.size(); i++) {
         if (!prntrs[i].isObject()) continue;
         QJsonObject printer = prntrs[i].toObject();
@@ -65,6 +78,23 @@ Printer* PrinterManager::getPrinter(quint32 id) {
 quint32 PrinterManager::addPrinter(Printer* p) {
     quint32 id = nextId++;
     printers.insert(id, p);
+    QObject::connect(p, &Printer::connectionUpdated, this, [this, p](bool status){
+        bool allResp = respondedPrinters.size() >= printerCount;
+        if (!allResp && !respondedPrinters.contains(p)) {
+            respondedPrinters.insert(p);
+            if (status && p->getBrand() == "BambuLab" && !bblEmu->isOk()) {
+                Check::write(QString("Connect to %1Printer(%2@%3)").arg(p->getBrand(), p->getName(), p->getHostname()), Cl::WARN);
+            } else {
+                Check::write(QString("Connect to %1Printer(%2@%3)").arg(p->getBrand(), p->getName(), p->getHostname()), (status) ? Cl::OK : Cl::FAIL);
+            }
+            if (respondedPrinters.size() >= printerCount) {
+                Check::write("Printer configuration loaded", Cl::OK);
+                ErrorHandler::flush();
+                ErrorHandler::stopBufferingAll();
+            }
+        }
+
+    });
     QObject::connect(p, &Printer::printStatusUpdated, this, [this, id, p](QString status){
         emit this->printStatusUpdated(id, printers.value(id)->getName(), status);
     });
@@ -72,14 +102,9 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         BambuLab* bblp = dynamic_cast<BambuLab*>(p);
         if (bblp == nullptr) {
             p->setBrand("Unknown");
-        } else if (mosqFilesPresent) {
-            if (!QFile("mosq.conf").exists() || !QFile("mqpasswd").exists() || !QFile("ca.crt").exists() || !QFile("server.crt").exists() || !QFile("server.key").exists()) {
-                mosqFilesPresent = false;
-                Error("ConfigError", "Missing mosquitto config files", El::Critical).handle();
-                return -1;
-            }
+        } else {
             if (bblEmu == nullptr) {
-                bblEmu = new BambuEmulator(parent());
+                bblEmu = new BambuEmulator(printerCount, parent());
                 QObject::connect(bblEmu, &BambuEmulator::jobLoaded, this, [this](quint32 id, const QString &filepath, QMap<QString, QString> properties) {
                     properties.insert("brand", "BambuLab");
                     properties.insert("id", QString::number(id));
@@ -95,9 +120,10 @@ quint32 PrinterManager::addPrinter(Printer* p) {
                     emit this->jobLoaded(id, filepath, properties);
                     emit this->jobInfoLoaded(propertiesForJS);
                 });
+                bblEmu->start();
             }
             //sqDebug() << "adding bambu printer with id:" << id;
-            bblEmu->addPrinter(id, bblp);
+            if (bblEmu->isOk()) bblEmu->addPrinter(id, bblp);
             return id;
         }
     }

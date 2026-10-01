@@ -24,13 +24,14 @@ signals:
 public slots:
     void closing();
 private:
+    QSet<Printer*> respondedPrinters;
+    quint8 printerCount = 0;
     quint16 baseOctPort = 21111;
     quint32 nextId = 0;
     QMap<quint32, Printer*> printers;
     QMap<quint32, OctoprintEmulator*> octEmus;
     BambuEmulator* bblEmu = nullptr;
     PrintersModel model = PrintersModel(&printers);
-    bool mosqFilesPresent = true;
 };
 
 #endif // PRINTERMANAGER_H

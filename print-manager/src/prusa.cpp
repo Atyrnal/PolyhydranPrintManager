@@ -106,6 +106,7 @@ void Prusa::testConnection() {
                 emit this->connectionUpdated(false);
                 Log::write("PrusaPrinter("+name+"@"+hostname+")", "Disconnected from printer");
             } else if (!connectedOnce) {
+                emit this->connectionUpdated(false);
                 Error::handle("PrusaPrinterConnectionTestError", "Unable to connect to printer " + name, El::Warning);
             }
             this->connectionStatus = false;
@@ -161,6 +162,7 @@ void Prusa::testConnection() {
                 emit this->connectionUpdated(false);
                 Log::write("PrusaPrinter("+name+"@"+hostname+")", "Disconnected from printer");
             } else if (!connectedOnce) {
+                emit this->connectionUpdated(false);
                 Error::handle("PrusaPrinterConnectionTestError", "Unable to connect to printer " + name, El::Warning);
             }
             this->connectionStatus = false;

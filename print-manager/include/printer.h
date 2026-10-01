@@ -29,6 +29,7 @@ public:
     QString getName();
     QString getModel();
     QString getBrand();
+    QString getHostname();
     bool getConnectionStatus();
     virtual JobStatus getJobStatus() = 0;
 signals:
@@ -38,6 +39,7 @@ protected:
     QString name;
     QString model;
     QString brand;
+    QString hostname;
     QNetworkAccessManager manager;
     bool connectionStatus = false;
 };
