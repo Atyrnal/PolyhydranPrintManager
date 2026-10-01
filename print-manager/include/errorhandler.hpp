@@ -12,6 +12,7 @@ public:
     static void buffer(const class Log &l);
     static void buffer(const class Check &l);
     static void bufferAll();
+    static bool isBufferingAll();
     static void stopBufferingAll();
     static void flush();
     template<typename T>

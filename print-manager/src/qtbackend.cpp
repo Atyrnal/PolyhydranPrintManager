@@ -256,7 +256,6 @@ void QTBackend::setRoot(QObject* r) {
 
 void QTBackend::loadConfig(QJsonObject cfg) {
     config = cfg;
-    pm->loadConfig(cfg);
     //TODO: Implement some sort of abstraction to allow program to work with any database
     if (!config.contains("airtable") || !config.value("airtable").isObject()) {
         Check::write("Credentials for Airtable loaded", Cl::FAIL);
@@ -282,6 +281,12 @@ void QTBackend::loadConfig(QJsonObject cfg) {
             else Check::write("Setting " + it.key(), "FOUND", cll);
         }
     }
+
+    //Load specific settings
+    emit this->setDarkmode(stnb("darkMode"));
+
+    //Load printer config
+    pm->loadConfig(cfg);
 }
 
 void QTBackend::showMessage(QString message, QString acceptText, int redirectState) {

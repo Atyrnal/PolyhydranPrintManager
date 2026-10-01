@@ -114,6 +114,10 @@ void ErrorHandler::stopBufferingAll() {
     bufferingAll = false;
 }
 
+bool ErrorHandler::isBufferingAll() {
+    return bufferingAll;
+}
+
 class Log Log::write(QString t, QString m) {
     Log _new = Log(t, m);
     ErrorHandler::log(_new);
@@ -182,7 +186,7 @@ QString ErrorHandler::genLogLineLog(QDateTime time, const QString &type, const Q
 QPair<QString, QString> ErrorHandler::genLogLineCheck(QDateTime time, const QString &checkName, const QString &message, CheckLevel clevel) {
     QString str = time.toString("yyyy-MM-ddThh:mm:ss.zzzZ") + " " + "CHECK" + " " + checkName.leftJustified(50) + " \t [";
     QString str2 = QString(str);
-    QString centered = message.rightJustified((8 + message.size()) / 2).leftJustified(8);
+    QString centered = message.leftJustified((8 + message.size()) / 2).rightJustified(8);
 
     // "  hello   "
     switch (clevel) {

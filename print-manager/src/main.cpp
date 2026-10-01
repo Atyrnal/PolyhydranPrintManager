@@ -16,6 +16,7 @@
 #include <QDir>
 #include <QSslSocket>
 #include "errorhandler.hpp"
+#include <QLoggingCategory>
 
 //Atyrnal 10/29/2025
 #define CONFIG_MAX_SIZE 1000000
@@ -42,6 +43,7 @@ Eo<QJsonObject> readJsonFile(const QString &filepath, quint64 maxSize = 0) {
 
 int main(int argc, char *argv[])
 {
+    QLoggingCategory::setFilterRules("qt.qpa.theme.gnome=false");
     QGuiApplication app(argc, argv); //Create a QT gui app
 
     QQmlApplicationEngine engine; //Qt engine creation
@@ -61,9 +63,9 @@ int main(int argc, char *argv[])
     ErrorHandler::initLogFileTimestamp("logs");
 
     QDir uploadDir = QDir("uploaded");
-    if (!uploadDir.exists()) {
-        uploadDir.mkpath(".");
-    }
+    if (uploadDir.exists() && !uploadDir.removeRecursively()) Error::handle("ConfigError", "Failed to wipe uploaded directory", El::Warning);
+    if (!uploadDir.mkpath(".")) Error::handle("ConfigError", "Failed to create uploaded directory", El::Critical);
+
     QTBackend bk(&app, &engine, &engine);
     engine.loadFromModule("PolyhydranPrintManager", "Main"); //Load the QML Main.qml declarative ui file
 

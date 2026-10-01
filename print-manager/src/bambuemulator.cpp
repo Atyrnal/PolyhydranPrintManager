@@ -138,7 +138,7 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
         }
     }
 
-    ErrorHandler::flush();
+    if (!ErrorHandler::isBufferingAll()) ErrorHandler::flush();
     return good;
 }
 
@@ -509,7 +509,12 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
         config.setLocalCertificate(QSslCertificate::fromPath("server.crt").at(0));
         QFile keyFile("server.key");
         auto p = keyFile.open(QIODevice::ReadOnly);
-        if (!p) return Error("BambuEmulatorServerError", "Unable to open private key file", El::Critical).handle();
+        if (!p) {
+            ftpsControlServer->deleteLater();
+            bindingServer->deleteLater();
+            bindingServerSsl->deleteLater();
+            return Error("BambuEmulatorServerError", "Unable to open private key file", El::Critical).handle();
+        }
         config.setPrivateKey(QSslKey(&keyFile, QSsl::Rsa));
         keyFile.close();
         ftpsControlServer->setSslConfiguration(config);
