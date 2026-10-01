@@ -99,6 +99,9 @@ ApplicationWindow { //Root app window
         function onSetAppmode(mode) {
             appmode = mode
         }
+        function onSetDarkmode(dm) {
+            Theme.isDark = dm
+        }
     }
 
     Item { //Container

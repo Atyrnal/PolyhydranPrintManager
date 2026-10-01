@@ -100,6 +100,7 @@ signals:
     void messageReq(const QString &message, const QString &buttonText, const int &redirectState);
     void setAppmode(quint8 mode);
     void setAppstate(quint8 state);
+    void setDarkmode(bool dm);
     void setScancontext(quint8 context);
     void tPrint(const QString &newtext);
     void closing();

@@ -90,6 +90,10 @@ Item {
                 RowLayout {
                     RadioButton {
                         checked:true
+                        Material.theme: Theme.isDark ? Material.Dark : Material.Light
+                        Material.foreground: Theme.text
+                        Material.primary: Theme.primary
+                        Material.accent : Theme.primary
                         text: "Makerspace Filament"
                         id: msfButton
                         onClicked: {
@@ -98,6 +102,10 @@ Item {
                     }
                     RadioButton {
                         checked:false
+                        Material.theme: Theme.isDark ? Material.Dark : Material.Light
+                        Material.foreground: Theme.text
+                        Material.primary: Theme.primary
+                        Material.accent : Theme.primary
                         text: "Personal Filament"
                         id: psfButton
                         onClicked: {
