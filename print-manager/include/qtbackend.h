@@ -65,9 +65,9 @@ protected:
     QJsonObject config;
     //Services
     //QSqlDatabase db;
-    AirtableBase* airtable;
-    PrinterManager* pm;
-    LTx2A rfidReader;
+    AirtableBase* airtable = nullptr;
+    PrinterManager* pm = nullptr;
+    LTx2A* rfidReader = nullptr;
     //QML stuff
     QQmlApplicationEngine* engine;
     QObject* root;

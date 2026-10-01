@@ -2,6 +2,7 @@
 #include "prusa.h"
 #include "bambulab.h"
 #include "errorhandler.hpp"
+#include "globalstate.hpp"
 #include <QTimer>
 
 PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
@@ -23,7 +24,7 @@ void PrinterManager::loadConfig(QJsonObject config){
     QJsonArray prntrs = config.value("printers").toArray();
     printerCount = prntrs.size();
     ErrorHandler::bufferAll();
-    QTimer::singleShot(60000, this, [this](){
+    QTimer::singleShot(stnuid("printerInitialConnectionTimeout", 60000), this, [this](){
         if (respondedPrinters.size() < printerCount) {
             Check::write("Printer configuration loaded", Cl::WARN);
             ErrorHandler::stopBufferingAll();

@@ -13,6 +13,7 @@
 #include <QTimer>
 
 Prusa::Prusa(QObject* parent) : Printer(parent) {
+
     //connect(&manager, &QNetworkAccessManager::authenticationRequired, this, &PrusaLink::provideAuth);
     testConnection();
     QTimer *timer = new QTimer(this);

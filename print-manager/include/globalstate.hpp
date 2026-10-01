@@ -12,6 +12,10 @@
 #define stnsd(sname, def) GlobalState::instance().getSetting((sname), (def)).toString()
 #define stnd(sname) GlobalState::instance().getSetting((sname), 0.0).toDouble()
 #define stndd(sname, def) GlobalState::instance().getSetting((sname), (def)).toDouble()
+#define stnui(sname) GlobalState::instance().getSetting((sname), 0).toUInt();
+#define stnuid(sname, def) GlobalState::instance().getSetting((sname), (def)).toUInt()
+#define stni(sname) GlobalState::instance().getSetting((sname), 0).toInt();
+#define stnid(sname, def) GlobalState::instance().getSetting((sname), (def)).toInt()
 
 class GlobalState : public QObject {
 public:

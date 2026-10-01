@@ -30,8 +30,8 @@
 QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
     ErrorHandler::bk = this;
 
-    rfidReader.start(); //Initialize the RFID reader
-    QObject::connect(app, &QCoreApplication::aboutToQuit, &rfidReader, &LTx2A::stop); //Connect the aboutToQuit app event to the rfidReader's stop function
+    //rfidReader.start(); //Initialize the RFID reader
+    QObject::connect(app, &QCoreApplication::aboutToQuit, rfidReader, &LTx2A::stop); //Connect the aboutToQuit app event to the rfidReader's stop function
 
     pm = new PrinterManager(parent);
 
@@ -53,9 +53,9 @@ QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject*
     connect(app, &QCoreApplication::aboutToQuit, pm, &PrinterManager::closing);
 
 
-    QObject::connect(&rfidReader, &LTx2A::cardScanned, this, [this]() { //Connect the rfidReader cardScanned event to the lambda
-        if (rfidReader.hasNext()) { //If the cards scanned queue is not empty
-            QString cardid = rfidReader.getNext().replace("\"", "").trimmed();
+    QObject::connect(rfidReader, &LTx2A::cardScanned, this, [this]() { //Connect the rfidReader cardScanned event to the lambda
+        if (rfidReader->hasNext()) { //If the cards scanned queue is not empty
+            QString cardid = rfidReader->getNext().replace("\"", "").trimmed();
             this->cardScanned(cardid);
         }
     });
@@ -289,9 +289,11 @@ void QTBackend::loadConfig(QJsonObject cfg) {
         GlobalState::instance().loadSettings(settings);
     }
 
+
     //Load specific settings
     emit this->setDarkmode(stnb("darkMode"));
 
+    rfidReader = new LTx2A(stnsd("rfidReaderPortName", "auto"));
     //Load printer config
     pm->loadConfig(cfg);
 }
