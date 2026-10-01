@@ -26,6 +26,14 @@
 
 #define APP_VERSION "0.1.0-alpha9"
 
+//Settings macros
+#define stnb(sname) settings.value((sname), false).toBool()
+#define stnbd(sname, def) settings.value((sname), (def)).toBool()
+#define stns(sname) settings.value((sname), "").toString()
+#define stnsd(sname, def) settings.value((sname), (def)).toString()
+#define stnd(sname) settings.value((sname), 0.0).toDouble()
+#define stndd(sname, def) settings.value((sname), (def)).toDouble()
+
 QTBackend::QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
     ErrorHandler::bk = this;
 
@@ -261,6 +269,19 @@ void QTBackend::loadConfig(QJsonObject cfg) {
     }
     Check::write("Credentials for Airtable loaded", Cl::OK);
     airtable = new AirtableBase(airtablec.value("hostname").toString(), airtablec.value("key").toString(), airtablec.value("base").toString(), this);
+
+    //Load settings
+    if (config.contains("settings") && config.value("settings").isObject()) {
+        QJsonObject settingsc = config.value("settings").toObject();
+        for (auto it = settingsc.constBegin(); it != settingsc.constEnd(); ++it) {
+            QString key = it.key();
+            QVariant val = it.value().toVariant();
+            settings.insert(key, val);
+            CheckLevel cll = (it.value().isBool()) ? (val.toBool()) ? Cl::OK : Cl::FAIL : Cl::WARN;
+            if (val.canConvert<QString>()) Check::write("Setting " + it.key() + " value", val.toString().toUpper(), cll);
+            else Check::write("Setting " + it.key(), "FOUND", cll);
+        }
+    }
 }
 
 void QTBackend::showMessage(QString message, QString acceptText, int redirectState) {
@@ -430,19 +451,25 @@ void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
         bool isCICS = cicsAff == "CICS Student" || cicsAff == "CICS Faculty or Staff";
         bool training = justTrained || recordFields.value("Certificates", QList<QString>()).toList().contains(PRINTING_CERT_ID); //Need to implement some form of join or something idek
 
-        loadedPrint.issues.insert("isCICS", isCICS);
-        loadedPrint.issues.insert("trained", training);
-        loadedPrint.issues.insert("duration", printDuration);
+        if (stnbd("requireCics", true)) loadedPrint.issues.insert("isCICS", isCICS);
+        if (stnbd("requireTraining", true))loadedPrint.issues.insert("trained", training);
+        if (stnbd("requirePrintDuration", true)) loadedPrint.issues.insert("duration", printDuration);
         loadedPrint.issues.insert("personalFilament", loadedPrint.isPersonalFilament);
 
-        if (!isCICS && !loadedPrint.isPersonalFilament) return showMessage("Sorry, but only CICS Community Members\nmay print using Makerspace filament.", "I Understand");
-        if (!training) {
+        if (stnbd("requireCics", true) && !isCICS) {
+            if (stnbd("allowNonCicsPersonalFilament", true)) {
+                if (!loadedPrint.isPersonalFilament) return showMessage("Sorry, but only CICS Community Members\nmay print using Makerspace filament.", "I Understand");
+            } else {
+                return showMessage("Sorry, but only CICS Community Members\ncan print at the\nPhysical Computing Makerspace", "I Understand");
+            }
+        }
+        if (stnbd("requireTraining", true) && !training) {
             root->setProperty("scancontext", ScanContext::StaffTraining);
             return showMessage("Please ask a staff member to\napprove your print or take \nour 3D Print training", "Training Completed", AppState::Scan);
         }
-        if (!staffApproved && printDuration > 6.0 && !loadedPrint.isPersonalFilament) return showMessage("Prints cannot be longer than 6 hours\nwith Makerspace Filament");
-        if (!staffApproved && printDuration > 10.0 && loadedPrint.isPersonalFilament && isCICS) return showMessage("Prints cannot be longer than 10 hours\n");
-        if (!staffApproved && printDuration > 6.0 && loadedPrint.isPersonalFilament && !isCICS) return showMessage("Prints cannot be longer than 6 hours\n");
+        if (!staffApproved && stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDuration", 6.0) && !loadedPrint.isPersonalFilament) return showMessage("Prints cannot be longer than 6 hours\nwith Makerspace Filament");
+        if (!staffApproved && stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && isCICS) return showMessage("Prints cannot be longer than 10 hours\n");
+        if (!staffApproved && stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && !isCICS) return showMessage("Prints cannot be longer than 6 hours\n");
     }
     showMessage("Printing now!");
     if (pm->getPrinter(loadedPrint.printerId) == nullptr) return Error("QTBackendError", "Loaded Printer not found", El::Critical).handle();
@@ -465,13 +492,18 @@ void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
 }
 
 void QTBackend::printStatusUpdated(quint16 _printerId, const QString &printerName, QString status) {
-
+    if (!stnbd("updatePrintStatuses", true)) return;
     //TODO: Set to aborted if failed within a certain time of it being started
     airtable->table("Print Log")->getRecord(QString("{Printer} = '%1'").arg(printerName), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
         if (recordeo.isError()) return recordeo.softHandle();
         QVariantMap recordFields = recordeo.get().value("fields").toMap();
         QString curstatus = recordFields.value("Status", "Unknown").toString();
+        QDateTime recordCreated = QDateTime::fromString(recordFields.value("Date", "2026-01-01T00:00:00.000Z").toString(), Qt::ISODateWithMs);
+        std::chrono::milliseconds diff = QDateTime::currentDateTimeUtc() - recordCreated;
         if (curstatus == "Ongoing" || curstatus == "Halted" || curstatus == "Unknown") {
+            if (status == "Failed" && diff <= std::chrono::milliseconds(300000)) //If print is stopped in the first 5 minutes
+            airtable->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", "Aborted"}});
+            else
             airtable->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", status}});
         }
     });

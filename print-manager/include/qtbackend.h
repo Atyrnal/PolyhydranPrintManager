@@ -62,8 +62,8 @@ public:
     // Eo<QMap<QString, QVariant>> queryDatabase(const QString &query, const QMap<QString, QVariant> &values);
     // Eo<QList<QMap<QString, QVariant>>> queryDatabaseMultirow(const QString &query, const QMap<QString, QVariant> &values);
 protected:
-    QString version = "0.3.3-alpha";
     QJsonObject config;
+    QMap<QString, QVariant> settings;
     //Services
     //QSqlDatabase db;
     AirtableBase* airtable;
