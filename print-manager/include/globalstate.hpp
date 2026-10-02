@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QMap>
 #include <QVariant>
+#include <QDir>
 #include <QCoreApplication>
 
 //Settings macros
@@ -31,12 +32,18 @@ public:
 
     QVariant getSetting(QString sname, QVariant def) const;
     void loadSettings(QMap<QString, QVariant> setc);
+    QString getDataDirPath() const;
+    QString getAppDirPath() const;
+    QDir getDataDir() const;
+    QDir getAppDir() const;
     QCoreApplication* getApp() const;
     void setApp(QCoreApplication* app);
 private:
     explicit GlobalState(QObject *parent = nullptr);
     ~GlobalState();
     QMap<QString, QVariant> settings;
+    QString dataDirPath;
+    QString appDirPath;
     QCoreApplication* app;
 };
 
