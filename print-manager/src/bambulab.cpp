@@ -15,6 +15,8 @@
 #include <QTimer>
 #include <QJsonDocument>
 #include <QJsonParseError>
+#include <QHostInfo>
+#include <QCoreApplication>
 
 
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}
@@ -75,7 +77,8 @@ void BambuLab::startConnection() {
     mqtt->setProtocolVersion(QMqttClient::MQTT_3_1_1);
     mqtt->setCleanSession(true);
     mqtt->setKeepAlive(60);
-    mqtt->setClientId("POLYHYDRAN Print Manager");
+    //So that we don't conflict with other instances of Polyhydran
+    mqtt->setClientId(QString("PolyhPM%1%2").arg(QHostInfo::localHostName().replace(".", ""), QString::number(QCoreApplication::applicationPid())));
 
     //TLS Encryption, cerificate validation
     QSslConfiguration sslConfig = QSslConfiguration::defaultConfiguration();
