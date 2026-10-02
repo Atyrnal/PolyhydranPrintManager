@@ -11,6 +11,8 @@
 #include <QJsonObject>
 #include "errors.hpp"
 #include <QTimer>
+#include <QJsonDocument>
+#include <QJsonParseError>
 
 Prusa::Prusa(QObject* parent) : Printer(parent) {
 

@@ -10,6 +10,8 @@
 #include <QNetworkReply>
 #include "errors.hpp"
 #include <QTimer>
+#include <QJsonDocument>
+#include <QJsonParseError>
 
 
 Prusa::Prusa(QString ip, QString password, QObject* parent) : Printer(ip, password, "maker", parent) {}

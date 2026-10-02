@@ -2,6 +2,8 @@
 #include <QTcpSocket>
 #include "errors.hpp"
 #include <QTimer>
+#include <QJsonDocument>
+#include <QJsonParseError>
 
 BambuLab::BambuLab(QString ip, QString accessCode, QObject* parent) : Printer(ip, accessCode, "bblp", parent) {}
 BambuLab::BambuLab(QString ip, QString accessCode, QString username, QObject* parent) : Printer(ip, accessCode, username, parent) {}

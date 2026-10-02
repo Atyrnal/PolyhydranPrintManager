@@ -202,7 +202,7 @@ QPair<QString, QString> ErrorHandler::genLogLineCheck(QDateTime time, const QStr
     }
     str += centered + "\033[0m]";
     str2 += centered + "]";
-    return QPair(str, str2);
+    return QPair<QString, QString>(str, str2);
 }
 
 void ErrorHandler::printLn(QDateTime time, ErrorLevel lvl, const QString &content) {

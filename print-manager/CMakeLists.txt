@@ -29,7 +29,9 @@ qt_add_qml_module(appPolyhydranPrintManager
     SOURCES src/globalstate.cpp
 )
 
-qt_import_qml_plugins(appPolyhydranPrintManager)
+if(NOT QT6_IS_SHARED_LIBS_BUILD)
+    qt_import_qml_plugins(appPolyhydranPrintManager)
+endif()
 
 set_target_properties(appPolyhydranPrintManager PROPERTIES
     MACOSX_BUNDLE_BUNDLE_VERSION ${PolyhydranPrintManager_VERSION}
