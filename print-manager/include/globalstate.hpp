@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QMap>
 #include <QVariant>
+#include <QCoreApplication>
 
 //Settings macros
 #define stnb(sname) GlobalState::instance().getSetting((sname), false).toBool()
@@ -17,6 +18,8 @@
 #define stni(sname) GlobalState::instance().getSetting((sname), 0).toInt();
 #define stnid(sname, def) GlobalState::instance().getSetting((sname), (def)).toInt()
 
+#define gsi GlobalState::instance()
+
 class GlobalState : public QObject {
 public:
     static GlobalState& instance();
@@ -28,10 +31,13 @@ public:
 
     QVariant getSetting(QString sname, QVariant def) const;
     void loadSettings(QMap<QString, QVariant> setc);
+    QCoreApplication* getApp() const;
+    void setApp(QCoreApplication* app);
 private:
     explicit GlobalState(QObject *parent = nullptr);
     ~GlobalState();
     QMap<QString, QVariant> settings;
+    QCoreApplication* app;
 };
 
 

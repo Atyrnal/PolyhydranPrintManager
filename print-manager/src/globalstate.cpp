@@ -1,4 +1,5 @@
 #include "globalstate.hpp"
+#include <QCoreApplication>
 
 GlobalState& GlobalState::instance() {
     static GlobalState instanced;
@@ -18,4 +19,12 @@ QVariant GlobalState::getSetting(QString sname, QVariant def) const {
 
 void GlobalState::loadSettings(QMap<QString, QVariant> setc) {
     settings = QMap(setc);
+}
+
+QCoreApplication* GlobalState::getApp() const {
+    return app;
+}
+
+void GlobalState::setApp(QCoreApplication* appptr) {
+    app = appptr;
 }

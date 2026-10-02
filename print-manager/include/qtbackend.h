@@ -53,7 +53,7 @@ struct LoadedPrint {
 class QTBackend : public QObject {
     Q_OBJECT
 public:
-    explicit QTBackend(QCoreApplication* app, QQmlApplicationEngine* eng, QObject* parent = 0);
+    explicit QTBackend(QQmlApplicationEngine* eng, QObject* parent = 0);
     void setRoot(QObject* root);
     void loadConfig(QJsonObject cfg);
     void showMessage(QString message, QString acceptText="OK", int redirectState = 0);
@@ -90,6 +90,7 @@ private:
     void completeTraining();
     void showPrintOverridePrep();
     void setCurrentStaff(QString id);
+    void startRfid();
 
 
 signals:
