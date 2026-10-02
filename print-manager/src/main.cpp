@@ -23,6 +23,22 @@
 #define CONFIG_MAX_SIZE 1000000
 //See ui/Main.qml for ui declarations
 
+
+/*ROADMAP AFTER 0.1.0-alpha10:
+    - 0.1.0-alpha11, add pcmlogov4 icons to executable and window, perhaps swap the current pcmlogo images over too
+    - 0.1.0-beta1, review all signals / slots for cohesion, seperate things into functions as much as possible.
+    Review code duplication. Seperate QTBackend into a bunch of different classes connected via signals, including
+    different classes per OS and better handling for Linux session types / DEs. Also clean up Dockerfile / build systems
+    and deployment.
+    - 0.1.0-beta2, unit testing and other code testing stuff, maybe changes to printmanager for better / more cohesive
+    printer connection lifecycle management
+    - 0.1.0-beta3, email / discord integration for print failures / completetions
+    - 0.1.0-beta3, add a printer status screen ui for monitoring the connection statuses and job stateof all the
+    printers at once
+    - 0.1.0-beta4, bring back uploading gcode files directly, then allow for printer selection, and print settings such
+    as ams mappings, timelapse, bed leveling, etc. just like the slicer.
+*/
+
 Eo<QJsonObject> readJsonFile(const QString &filepath, quint64 maxSize = 0) {
     using eop = Eo<QJsonObject>;
     QFile f = QFile(filepath);

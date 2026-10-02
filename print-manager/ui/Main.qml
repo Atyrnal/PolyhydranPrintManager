@@ -48,6 +48,7 @@ ApplicationWindow { //Root app window
     }
 
     onClosing: function(close) { //Dont let user close kiosk app
+        if (rootWindow.visibility !== Window.Minimized) rootWindow.showMinimized()
         close.accepted = false
     }
 
