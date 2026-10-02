@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QHttpServerResponse>
 #include "gcodeparser.h"
+#include "globalstate.hpp"
 
 OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(parent), server(), port() {
     /*server.route("/api/printer", []() {
@@ -105,9 +106,9 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
                 printFlag = QString::fromUtf8(partBody).trimmed() == "true";
             }
         }
-        QString filePath = "uploaded/" + originalFileName;
+        QString filePath = gsi.getDataDirPath() + "/uploaded/" + originalFileName;
         //make the "uploaded" dir if it doesnt exist
-        QDir uploadDir = QDir("uploaded");
+        QDir uploadDir = QDir(gsi.getDataDirPath() + "/uploaded");
         if (!uploadDir.exists()) {
             uploadDir.mkpath(".");
         }

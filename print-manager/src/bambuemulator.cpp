@@ -33,7 +33,7 @@ bool BambuEmulator::isOk() const {
 bool BambuEmulator::setupCheck(quint8 printerCount) {
     bool good = true;
     //Check mosq.conf and related files
-    QString configPath = "mosq.conf";
+    QString configPath = gsi.getDataDir().filePath("mosq.conf");
     if (/*!QFile::exists(configPath) &&*/ !genMosquittoConfig(configPath, printerCount)) {
         Check::write("Config file mosq.conf generated", Cl::FAIL);
         Error::buffer("ConfigGeneratorError", "Failed to generate mosq.conf file", El::Critical);
@@ -41,30 +41,34 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     } else {
         Check::write("Config file mosq.conf generated", Cl::OK);
     }
-    if (!QFile::exists(stnsd("mosqCaCertFile","ca.crt"))) {
+    QString caPath = (stnsd("mosqCaCertFile","ca.crt").startsWith("/")) ? stnsd("mosqCaCertFile","ca.crt") : gsi.getDataDirPath() + '/' + stnsd("mosqCaCertFile","ca.crt");
+    if (!QFile::exists(caPath)) {
         Check::write("Config file ca cert exists", Cl::FAIL);
-        Error::buffer("ConfigError", QString("Missing ca cert certificate file %1").arg(stnsd("mosqCaCertFile","ca.crt")), El::Critical);
+        Error::buffer("ConfigError", QString("Missing ca cert certificate file %1").arg(caPath), El::Critical);
         good = false;
     } else {
         Check::write("Config file ca cert exists", Cl::OK);
     }
-    if (!QFile::exists(stnsd("mosqServerCertFile", "server.crt"))) {
+    QString srvPath = (stnsd("mosqServerCertFile","server.crt").startsWith("/")) ? stnsd("mosqServerCertFile","server.crt") : gsi.getDataDirPath() + '/' + stnsd("mosqServerCertFile","server.crt");
+    if (!QFile::exists(srvPath)) {
         Check::write("Config file server cert exists", Cl::FAIL);
-        Error::buffer("ConfigError", QString("Missing server cert certificate file %1").arg(stnsd("mosqServerCertFile", "server.crt")), El::Critical);
+        Error::buffer("ConfigError", QString("Missing server cert certificate file %1").arg(srvPath), El::Critical);
         good = false;
     } else {
         Check::write("Config file server cert exists", Cl::OK);
     }
-    if (!QFile::exists(stnsd("mosqServerKeyFile", "server.key"))) {
+    QString pkPath = (stnsd("mosqServerKeyFile","server.key").startsWith("/")) ? stnsd("mosqServerKeyFile","server.key") : gsi.getDataDirPath() + '/' + stnsd("mosqServerKeyFile","server.key");
+    if (!QFile::exists(pkPath)) {
         Check::write("Config file server private key exists", Cl::FAIL);
-        Error::buffer("ConfigError", "Missing server private key file " + stnsd("mosqServerKeyFile", "server.key"), El::Critical);
+        Error::buffer("ConfigError", "Missing server private key file " + pkPath, El::Critical);
         good = false;
     } else {
         Check::write("Config file server private key exists", Cl::OK);
     }
 
-    if (!QFile::exists("mqpasswd")) {
-        QFile passwd = QFile("mqpasswd");
+    QString passPath = gsi.getDataDir().filePath("mqpasswd");
+    if (!QFile::exists(passPath)) {
+        QFile passwd = QFile(passPath);
         if (!passwd.open(QFile::WriteOnly)) {
             Check::write("Config file mqpasswd exists", Cl::FAIL);
             Error::buffer("ConfigGeneratorError", "Failed to generate mqpasswd password file", El::Critical);
@@ -132,7 +136,7 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
 
     if (good) {
         QFile pcer(pcerpath);
-        QFile cacrt(stnsd("mosqCaCertFile", "ca.crt"));
+        QFile cacrt(caPath);
         if (!pcer.open(QFile::ReadOnly) || !cacrt.open(QFile::ReadOnly)) return false;
 
         const QByteArray outerData = pcer.readAll();
@@ -152,7 +156,10 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
 }
 
 bool BambuEmulator::genMosquittoConfig(QString path, quint8 printerCount) {
-    QFile conf = QFile(path);
+
+    QString configPath = gsi.getDataDir().filePath("mosq.conf");
+    QFile conf = QFile(configPath);
+
     if (!conf.open(QFile::WriteOnly)) {
 
         return false;
@@ -196,7 +203,7 @@ void BambuEmulator::startMosquitto() {
             mosquitoPath = "/usr/bin/mosquitto";
         #endif
     }
-    QString configPath = QDir(QCoreApplication::applicationDirPath()).filePath("mosq.conf");
+    QString configPath = gsi.getDataDir().filePath("mosq.conf");
 
     //Start mosquitto instance
     mosquito->start(mosquitoPath, QStringList() << "-c" << configPath << "-v");
@@ -276,7 +283,7 @@ void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqtt
                     //Log::write("BambuEmulator", "Print" + cmd + "request recieved from slicer:" + QJsonDocument(msg).toJson(QJsonDocument::Indented));
                     if (cmd == "project_file") {
                         BambuPrintOptions opt = BambuPrintOptions::fromMqtt(print);
-                        QString filepath = "uploaded/"+opt.fileName;
+                        QString filepath = gsi.getDataDirPath() + "/uploaded/"+opt.fileName;
                         auto propsEo = GCodeParser::parse3mfFile(filepath, opt.plateNum);
                         if (propsEo.isError()) return propsEo.handle();
                         auto props = propsEo.get();
@@ -286,7 +293,7 @@ void BambuEmulator::slicerRequestRecieved(const QByteArray &message, const QMqtt
                         emit jobLoaded(ids.value(printer->virtualSN), filepath, props);
                     } else {
                         QString filename = print.value("param").toString().replace("\\", "/").split("/").last();
-                        QString filepath = "uploaded/"+filename;
+                        QString filepath = gsi.getDataDirPath() + "/uploaded/"+filename;
                         auto propsEo = GCodeParser::parseFile(filepath);
                         if (propsEo.isError()) return propsEo.handle();
                         auto props = propsEo.get();
@@ -354,8 +361,8 @@ void BambuEmulator::recieveFile(QTcpSocket* controlSocket, BambuLab* printer) {
     QSslServer* ftpsServer = new QSslServer(this);
 
     QSslConfiguration config = QSslConfiguration::defaultConfiguration();
-    config.setLocalCertificate(QSslCertificate::fromPath("server.crt").at(0));
-    QFile keyFile("server.key");
+    config.setLocalCertificate(QSslCertificate::fromPath(gsi.getDataDir().filePath("server.crt")).at(0));
+    QFile keyFile(gsi.getDataDir().filePath("server.key"));
     auto p = keyFile.open(QIODevice::ReadOnly);
     if (!p) {
         ftpsServer->deleteLater();
@@ -392,11 +399,11 @@ void BambuEmulator::recieveFile(QTcpSocket* controlSocket, BambuLab* printer) {
             if (controlSocket == nullptr) Error("BambuEmulatorFTPSError", "Invalid pointer to control socket", El::Critical).handle();
             else controlSocket->write("226 Transfer complete\r\n");
             if (printer->filename.toLower() != "verify_job") {
-                QDir uploadDir = QDir("uploaded");
+                QDir uploadDir = QDir(gsi.getDataDirPath() + "/uploaded");
                 if (!uploadDir.exists()) {
                     uploadDir.mkpath(".");
                 }
-                QFile tmpgcode("uploaded/" + printer->filename);
+                QFile tmpgcode(gsi.getDataDirPath() + "/uploaded/" + printer->filename);
                 if(!tmpgcode.open(QIODevice::WriteOnly)) return Error("BambuEmulatorFTPSError", "Unable to save recieved gcode file", El::Critical).handle();
                 tmpgcode.write(*fileBuffer);
                 tmpgcode.close();
@@ -518,8 +525,8 @@ void BambuEmulator::addPrinter(quint32 id, BambuLab* printer) {
         QSslServer* bindingServerSsl = new QSslServer(this);
 
         QSslConfiguration config = QSslConfiguration::defaultConfiguration();
-        config.setLocalCertificate(QSslCertificate::fromPath("server.crt").at(0));
-        QFile keyFile("server.key");
+        config.setLocalCertificate(QSslCertificate::fromPath(gsi.getDataDir().filePath("server.crt")).at(0));
+        QFile keyFile(gsi.getDataDir().filePath("server.key"));
         auto p = keyFile.open(QIODevice::ReadOnly);
         if (!p) {
             ftpsControlServer->deleteLater();

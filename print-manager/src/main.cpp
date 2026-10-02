@@ -17,6 +17,7 @@
 #include <QSslSocket>
 #include "errorhandler.hpp"
 #include <QLoggingCategory>
+#include "globalstate.hpp"
 
 //Atyrnal 10/29/2025
 #define CONFIG_MAX_SIZE 1000000
@@ -55,24 +56,25 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
 
-    QDir logDir = QDir("logs");
+    QDir logDir = QDir(GlobalState::instance().getDataDirPath()+"/logs");
     if (!logDir.exists()) {
         logDir.mkpath(".");
     }
-    ErrorHandler::initLogFile("logs/latest.log");
-    ErrorHandler::initLogFileTimestamp("logs");
+    ErrorHandler::initLogFile(logDir.filePath("latest.log"));
+    ErrorHandler::initLogFileTimestamp(logDir.path());
 
-    QDir uploadDir = QDir("uploaded");
+    QDir uploadDir = QDir(GlobalState::instance().getDataDirPath()+"/uploaded");
     if (uploadDir.exists() && !uploadDir.removeRecursively()) Error::handle("ConfigError", "Failed to wipe uploaded directory", El::Warning);
     if (!uploadDir.mkpath(".")) Error::handle("ConfigError", "Failed to create uploaded directory", El::Critical);
 
-    QTBackend bk(&app, &engine, &engine);
+    gsi.setApp(&app);
+    QTBackend bk(&engine, &engine);
     engine.loadFromModule("PolyhydranPrintManager", "Main"); //Load the QML Main.qml declarative ui file
 
     QObject* root = engine.rootObjects().at(0); //Get the root object (in this case the Window)
     bk.setRoot(root);
 
-    auto config = readJsonFile(QDir(QCoreApplication::applicationDirPath()).filePath("configuration.json"), CONFIG_MAX_SIZE);
+    auto config = readJsonFile(GlobalState::instance().getAppDir().filePath("configuration.json"), CONFIG_MAX_SIZE);
     if (config.isError()) {
         config.softHandle();
         Check::write("Config file configuration.json loaded", Cl::FAIL);
