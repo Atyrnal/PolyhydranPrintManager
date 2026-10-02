@@ -13,6 +13,8 @@
 #include <QSslKey>
 #include "errors.hpp"
 #include <QTimer>
+#include <QJsonDocument>
+#include <QJsonParseError>
 
 
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}
