@@ -1,6 +1,7 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg SerialPort Sql HttpServer Mqtt)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg SerialPort Sql HttpServer Mqtt DBus)
 find_package(CURL REQUIRED)
 find_package(libzip REQUIRED)
+find_package(KF6WindowSystem REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -53,8 +54,10 @@ target_link_libraries(appPolyhydranPrintManager PRIVATE
     Qt6::Sql
     Qt6::HttpServer
     Qt6::Mqtt
+    Qt6::DBus
     CURL::libcurl
     libzip::zip
+    KF6::WindowSystem
 )
 
 include(GNUInstallDirs)

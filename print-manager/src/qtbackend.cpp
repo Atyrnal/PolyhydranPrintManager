@@ -23,9 +23,21 @@
 #include <QStandardPaths>
 #endif
 
+#ifdef Q_OS_LINUX
+#include <QtDBus/QDBusConnection>
+#include <QtDBus/QDBusInterface>
+#include <QtDBus/QDBusReply>
+#include <QWindow>
+#include <KWindowSystem>
+#include <QTemporaryFile>
+#include <QDir>
+#include <QFile>
+#include <QRandomGenerator>
+#endif
+
 #define PRINTING_CERT_ID "recY34WO6fex1KMxO"
 
-#define APP_VERSION "0.1.0-alpha9"
+#define APP_VERSION "0.1.0-alpha10"
 
 QTBackend::QTBackend(QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
     ErrorHandler::bk = this;
@@ -48,12 +60,26 @@ QTBackend::QTBackend(QQmlApplicationEngine* eng, QObject* parent) : QObject(pare
 
     connect(this, &QTBackend::printLoaded, this, &QTBackend::jobLoaded);
     connect(pm, &PrinterManager::jobLoaded, this, &QTBackend::jobLoaded);
+    connect(pm, &PrinterManager::jobLoaded, this, &QTBackend::netPrintIntercepted);
     connect(pm, &PrinterManager::printStatusUpdated, this, &QTBackend::printStatusUpdated);
 
     connect(gsi.getApp(), &QCoreApplication::aboutToQuit, pm, &PrinterManager::closing);
 
+    #ifdef Q_OS_LINUX
+        QDBusConnection::sessionBus().connect(
+            "org.freedesktop.Notifications",
+            "/org/freedesktop/Notifications",
+            "org.freedesktop.Notifications",
+            "ActionInvoked",
+            this, SLOT(onNotificationAction(uint,QString)));
 
-
+        QDBusConnection::sessionBus().connect(
+            "org.freedesktop.Notifications",
+            "/org/freedesktop/Notifications",
+            "org.freedesktop.Notifications",
+            "ActivationToken",
+            this, SLOT(onNotificationActivationToken(uint,QString)));
+    #endif
     // QTimer::singleShot(5000, this, [this](){
     //     root->setProperty("appstate", AppState::Loading+1);
     // });
@@ -90,6 +116,7 @@ double QTBackend::parseDuration(const QString &durationString) {
     return totalHours;
 }
 
+//TODO: Make these work for linux / KDE ve(also make the app raise itelf)
 #ifdef Q_OS_WIN
 DWORD QTBackend::findProcessId(const QString& exeName) { //Windows shenanigans to find process by exename
     PROCESSENTRY32 entry;
@@ -223,29 +250,38 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
         Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
     }
     #else
-    QString exe;
-    if (stns("orcaSlicerExec") != "") {
-        exe = stns("orcaSlicerExec");
-        if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
-            Log::write("QtBackend", "Launching OrcaSlicer instance");
-            QProcess::startDetached(exe);
+    if (isProcessRunning({"orca-slicer", "OrcaSlicer", "orcaslicer"})) {
+        if (raiseOrcaLinux()) {
+            Log::write("QtBackend", "Bringing running OrcaSlicer instance to front");
         } else {
-            Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+            Error::handle("QtBackendError","OrcaSlicer is already running, but this desktop doesn't allow raising its window",El::Trivial);
         }
+        return;   // never launch a second instance
     } else {
-        exe = QStandardPaths::findExecutable("orca-slicer");
-        if (exe.isEmpty())
-            exe = QStandardPaths::findExecutable("OrcaSlicer");
-        if (exe.isEmpty())
-            exe = QStandardPaths::findExecutable("orcaslicer");
-        if (exe.isEmpty())
-            exe = "/opt/orca-slicer/bin/orca-slicer";
-        //exe = "/usr/bin/orca-slicer"; // fallback
-        if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
-            Log::write("QtBackend", "Launching OrcaSlicer instance");
-            QProcess::startDetached(exe);
+        QString exe;
+        if (stns("orcaSlicerExec") != "") {
+            exe = stns("orcaSlicerExec");
+            if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
+                Log::write("QtBackend", "Launching OrcaSlicer instance");
+                QProcess::startDetached(exe);
+            } else {
+                Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+            }
         } else {
-            Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+            exe = QStandardPaths::findExecutable("orca-slicer");
+            if (exe.isEmpty())
+                exe = QStandardPaths::findExecutable("OrcaSlicer");
+            if (exe.isEmpty())
+                exe = QStandardPaths::findExecutable("orcaslicer");
+            if (exe.isEmpty())
+                exe = "/opt/orca-slicer/bin/orca-slicer";
+            //exe = "/usr/bin/orca-slicer"; // fallback
+            if (QFile::exists(exe)){ //Otherwise launch it (if it is installed)
+                Log::write("QtBackend", "Launching OrcaSlicer instance");
+                QProcess::startDetached(exe);
+            } else {
+                Error::handle("QtBackendError", "OrcaSlicer installation not found", El::Warning);
+            }
         }
     }
 
@@ -253,6 +289,95 @@ Q_INVOKABLE void QTBackend::orcaButtonClicked() { //Runs when orcaslicer button 
 
 }
 
+
+#ifdef Q_OS_LINUX
+bool QTBackend::isProcessRunning(const QStringList &names) {
+    const QStringList pids = QDir("/proc").entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString &pid : pids) {
+        bool ok = false;
+        pid.toUInt(&ok);
+        if (!ok) continue;                       // skip non-numeric entries
+        QFile f("/proc/" + pid + "/comm");
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        const QString comm = QString::fromUtf8(f.readAll()).trimmed();
+        for (const QString &n : names)
+            if (comm.contains(n, Qt::CaseInsensitive)) return true;
+    }
+    return false;
+}
+
+
+bool QTBackend::raiseWindowKWin(const QString &jsCondition) {
+    QDBusInterface kwin("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting", QDBusConnection::sessionBus());
+    if (!kwin.isValid()) return false;   // not running under KWin
+
+    auto *script = new QTemporaryFile(QDir::temp().filePath("raise-XXXXXX.js"), this);
+    if (!script->open()) {
+        script->deleteLater();
+        return false;
+    }
+
+    script->write(QString(R"(
+        const wins = workspace.windowList ? workspace.windowList() : workspace.clientList();
+        for (const w of wins) {
+            if (%1) {
+                w.minimized = false;
+                if (workspace.windowList) workspace.activeWindow = w;
+                else workspace.activeClient = w;
+                break;
+            }
+        }
+    )").arg(jsCondition).toUtf8());
+    script->flush();
+
+    // Unique name per call, otherwise loadScript can fail if a previous one is still loaded
+    const QString name = "raise-" + QString::number(QRandomGenerator::global()->generate());
+
+    QDBusReply<int> id = kwin.call("loadScript", script->fileName(), name);
+    if (!id.isValid() || id.value() < 0) {
+        script->deleteLater();
+        return false;
+    }
+
+    // Plasma 6 path; Plasma 5 used "/<id>" instead
+    QDBusInterface s("org.kde.KWin", QString("/Scripting/Script%1").arg(id.value()), "org.kde.kwin.Script", QDBusConnection::sessionBus());
+    s.call("run");
+
+    // Give the script time to execute, then unload it and delete the temp file
+    QTimer::singleShot(1000, this, [name, script]() {
+        QDBusInterface k("org.kde.KWin", "/Scripting", "org.kde.kwin.Scripting",
+                         QDBusConnection::sessionBus());
+        k.call("unloadScript", name);
+        script->deleteLater();
+    });
+
+    return true;
+}
+
+bool QTBackend::raiseOrcaLinux() {
+    const QString desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower();
+    const QString session = qEnvironmentVariable("XDG_SESSION_TYPE").toLower();
+
+    if (desktop.contains("kde"))
+        return raiseWindowKWin("String(w.resourceClass).toLowerCase().includes('orca')");
+    if (session == "x11")
+        return QProcess::startDetached("wmctrl", {"-x", "-a", "orca"});
+    return false;   // GNOME Wayland etc.
+}
+
+bool QTBackend::raiseSelfLinux() {
+    const QString desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower();
+    const QString session = qEnvironmentVariable("XDG_SESSION_TYPE").toLower();
+
+    if (desktop.contains("kde"))
+        Log::write("Attempting raise via KWin script");
+        return raiseWindowKWin(QString("w.pid === %1").arg(QCoreApplication::applicationPid()));;
+    if (session == "x11")
+        Log::write("Attempting raise via wmctrl");
+        return QProcess::startDetached("wmctrl", {"-x", "-a", "polyhydran"});
+    return false;   // GNOME Wayland etc.
+}
+#endif
 
 //Qt accessible functions
 
@@ -310,6 +435,65 @@ void QTBackend::jobLoaded(quint32 id, const QString &filepath, const QMap<QStrin
     loadedPrint.printInfo = printInfo; //set printinfo
     loadedPrint.printerId= id;
     root->setProperty("appstate", AppState::Prep); //change QML appstate to show print info
+}
+
+void QTBackend::netPrintIntercepted(quint32 id, const QString &_filepath, const QMap<QString, QString> &printInfo) {
+    /*emit this->raiseRequested();*/ //Raise only when we load a job from the printermanager, not from upload.
+    #ifdef Q_OS_LINUX
+        Log::write("QTBackendWindowManager", "attempting self raise linux");
+        if (raiseSelfLinux()) return; //Try raising via KWin Script
+    #endif
+    emit this->raiseRequested();  // tries the automatic raise via QML (works on Windows), alerts otherwise
+
+    #ifdef Q_OS_LINUX
+        Log::write("QTBackendWindowManager", "sending notification");
+        Printer *p = pm->getPrinter(id);
+        notifyPrintReceived("Print received",QString("%1 is ready to print%2").arg(printInfo.value("filename", "Your file"), (p) ? " on " + p->getName() : ""));
+    #endif
+}
+
+void QTBackend::notifyPrintReceived(const QString &title, const QString &body) {
+#ifdef Q_OS_LINUX
+    QDBusInterface iface("org.freedesktop.Notifications",
+                         "/org/freedesktop/Notifications",
+                         "org.freedesktop.Notifications",
+                         QDBusConnection::sessionBus());
+    if (!iface.isValid()) return; // no notification daemon running
+
+    QDBusReply<uint> reply = iface.call(
+        "Notify",
+        "Polyhydran Print Manager",      // app name
+        lastNotificationId,              // replaces the previous one instead of stacking
+        "",                              // icon (name or path)
+        title,
+        body,
+        QStringList{"default", "Open"},  // "default" = clicking the notification body
+        QVariantMap{},                   // hints
+        10000);                          // timeout in ms
+
+    if (reply.isValid()) lastNotificationId = reply.value();
+#else
+    Q_UNUSED(title); Q_UNUSED(body);
+#endif
+}
+
+void QTBackend::onNotificationAction(uint id, const QString &actionKey) {
+    if (id != lastNotificationId || actionKey != "default") return;
+
+    if (!lastActivationToken.isEmpty())
+        KWindowSystem::setCurrentXdgActivationToken(lastActivationToken);
+
+    emit raiseRequested();   // un-minimize via QML
+
+    if (QWindow *w = qobject_cast<QWindow *>(root))
+        KWindowSystem::activateWindow(w);
+
+    lastActivationToken.clear();   // tokens are single-use
+}
+
+void QTBackend::onNotificationActivationToken(uint id, const QString &token) {
+    if (id != lastNotificationId) return;
+    lastActivationToken = token;
 }
 
 void QTBackend::setCurrentStaff(QString id) {

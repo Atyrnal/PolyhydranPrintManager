@@ -77,6 +77,7 @@ protected:
     QString currentStaffID = "";
     QVariantMap currentUser;
     QSet<QString> staffCache;
+    quint32 lastNotificationId = 0;
 private:
     #ifdef Q_OS_WIN
     DWORD findProcessId(const QString &processName);
@@ -91,6 +92,15 @@ private:
     void showPrintOverridePrep();
     void setCurrentStaff(QString id);
     void startRfid();
+    void notifyPrintReceived(const QString &title, const QString &body);
+#ifdef Q_OS_LINUX
+    bool isProcessRunning(const QStringList &names);
+    bool raiseWindowKWin(const QString &jsCondition);
+    bool raiseSelfLinux();
+    bool raiseOrcaLinux();
+#endif
+    QString lastActivationToken;
+
 
 
 signals:
@@ -104,8 +114,12 @@ signals:
     void setScancontext(quint8 context);
     void tPrint(const QString &newtext);
     void closing();
+    void raiseRequested();
 private slots:
+    void onNotificationAction(quint32 id, const QString &actionKey);
+    void onNotificationActivationToken(quint32 id, const QString &token);
     void jobLoaded(quint32 id, const QString &filepath, const QMap<QString, QString> &printInfo);
+    void netPrintIntercepted(quint32 id, const QString &filepath, const QMap<QString, QString> &printInfo);
     void printStatusUpdated(quint16 printerId, const QString &printerName, QString status);
 public slots:
     Q_INVOKABLE void orcaButtonClicked();

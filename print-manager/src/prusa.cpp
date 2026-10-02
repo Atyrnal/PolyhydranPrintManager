@@ -96,6 +96,7 @@ void Prusa::sendGCode(QString filepath) {
     });
 }
 
+//TODO: allow a limited number of retries if the connection fails initially
 void Prusa::testConnection() {
     //Log::write("PrusaPrinter("+name+"@"+hostname+")", "Testing connection...");
     QUrl testUrl(QString("http://%1/api/v1/status").arg(hostname));

@@ -168,11 +168,17 @@ Item {
     }
 
     function raiseWindow() {
-        rootWindow.flags |= Qt.WindowStaysOnTopHint
-        rootWindow.show()
+        //rootWindow.flags |= Qt.WindowStaysOnTopHint
+        //Demand attention
+        if (rootWindow.visibility === Window.Minimized)
+            rootWindow.showNormal()
+        else
+            rootWindow.show()
+
         rootWindow.raise()
         rootWindow.requestActivate()
-        rootWindow.flags &= ~Qt.WindowStaysOnTopHint
+        rootWindow.alert(0)
+        //rootWindow.flags &= ~Qt.WindowStaysOnTopHint
     }
 
     Connections {
@@ -180,13 +186,16 @@ Item {
         function onPrintInfoLoaded(printInfo) {
             prep.loadPrintInfo(printInfo)
         }
+        function onRaiseRequested(){
+            prep.raiseWindow()
+        }
     }
 
     Connections {
         target: printermanager
         function onJobInfoLoaded(printInfo) {
             prep.loadPrintInfo(printInfo)
-            prep.raiseWindow()
+            // prep.raiseWindow()
         }
     }
 
