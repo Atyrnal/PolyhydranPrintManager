@@ -84,3 +84,10 @@ secrets.h
 *.db
 *.conf
 .cache
+
+#More build Directories
+Debian-Release/
+build/
+builds/
+release/
+releases/
