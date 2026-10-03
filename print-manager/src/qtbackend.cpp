@@ -369,12 +369,14 @@ bool QTBackend::raiseSelfLinux() {
     const QString desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower();
     const QString session = qEnvironmentVariable("XDG_SESSION_TYPE").toLower();
 
-    if (desktop.contains("kde"))
+    if (desktop.contains("kde")) {
         Log::write("Attempting raise via KWin script");
         return raiseWindowKWin(QString("w.pid === %1").arg(QCoreApplication::applicationPid()));;
-    if (session == "x11")
+    }
+    if (session == "x11") {
         Log::write("Attempting raise via wmctrl");
         return QProcess::startDetached("wmctrl", {"-x", "-a", "polyhydran"});
+    }
     return false;   // GNOME Wayland etc.
 }
 #endif
