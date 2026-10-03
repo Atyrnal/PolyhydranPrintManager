@@ -37,7 +37,7 @@
 
 #define PRINTING_CERT_ID "recY34WO6fex1KMxO"
 
-#define APP_VERSION "0.1.0-alpha11"
+#define APP_VERSION "0.1.0-beta1"
 
 QTBackend::QTBackend(QQmlApplicationEngine* eng, QObject* parent) : QObject(parent) {
     ErrorHandler::bk = this;
