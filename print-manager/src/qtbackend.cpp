@@ -526,15 +526,35 @@ void QTBackend::showPrintOverridePrep() {
     root->setProperty("appstate", AppState::PrepOverride);
 }
 
+
+
+void QTBackend::lookupUser(const QString &cardid, std::function<void(UserLookup, const QVariantMap &user)> done) {
+    if (staffCache.contains(cardid)) {
+        return done(UserLookup::Staff, {});
+    }
+    airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [this, cardid, done](Eo<QVariantMap> eo) {
+        if (eo.isError()) {
+            if (eo.errorLevel() <= El::Trivial) {
+                eo.softHandle();
+                return done(UserLookup::NotFound, {});
+            }
+            eo.handle();
+            return done(UserLookup::Error, {});
+        }
+        QVariantMap user = eo.get();
+        bool isStaff = user.value("fields").toMap().value("Is Staff", false).toBool();
+        if (isStaff) setCurrentStaff(cardid);
+        done(isStaff ? UserLookup::Staff : UserLookup::NotStaff, user);
+    });
+}
+
 void QTBackend::cardScanned(const QString &cardid) {
     ScanContext context = scancontext();
     AppState prev = appstate();
 
-    bool isCachedStaff = staffCache.contains(cardid);
-    if (isCachedStaff) setCurrentStaff(cardid);
+    //bool isCachedStaff = staffCache.contains(cardid);
+    if (staffCache.contains(cardid)) setCurrentStaff(cardid);
     else root->setProperty("appstate", AppState::Loading);
-
-
     root->setProperty("scancontext", ScanContext::NoContext);
 
     Log::write("QtBackendSerial", "Card scanned, current conext:" + QString::number(context));
@@ -542,104 +562,74 @@ void QTBackend::cardScanned(const QString &cardid) {
         currentUserID = cardid;
         loadedPrint.userID = cardid;
 
-        if (isCachedStaff) {
-            printStartCheck(true);
-        } else { //Fetch from airtable
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(currentUserID), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
-                if (recordeo.isError()) {
-                    if (recordeo.errorLevel() <= El::Trivial) {
-                        recordeo.softHandle();
-                        loadedPrint.issues.insert("isRegistered", false);
-                        return showMessage("Your account is not Registered\nPlease Register at the Check-In Kiosk");
-                    } else {
-                        root->setProperty("appstate", AppState::Idle);
-                        return recordeo.handle();
-                    }
-                }
-                currentUser = recordeo.get();
-                QVariantMap recordFields = recordeo.get().value("fields").toMap(); //Could need toJsonObject instead?
-                bool isStaff = recordFields.value("Is Staff", false).toBool();
-                if (isStaff) setCurrentStaff(cardid);
-                printStartCheck(isStaff);
-            });
-        }
+        lookupUser(cardid, [=, this](UserLookup r, const QVariantMap &user) {
+            switch(r) {
+            case UserLookup::Staff:
+                setCurrentStaff(cardid);
+                if (!user.isEmpty()) currentUser = user;
+                printStartCheck(true);
+                break;
+            case UserLookup::NotStaff:
+                if (!user.isEmpty()) currentUser = user;
+                    printStartCheck(false, ct);
+                break;
+            case UserLookup::NotFound:
+                loadedPrint.issues.insert("isRegistered", false);
+                showMessage("Your account is not Registered\nPlease Register at the Check-In Kiosk");
+                break;
+            default:
+                root->setProperty("appstate", AppState::Idle);
+                break;
+            }
+        });
     } else if (context == ScanContext::StaffTraining && prev == AppState::Scan) {
-        if (isCachedStaff) {
-            completeTraining();
-        } else { //fetch airtable
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
-                if (recordeo.isError()) {
-                    if (recordeo.errorLevel() <= El::Trivial) {
-                        root->setProperty("scancontext", ScanContext::StaffTraining);
-                        return showMessage("This user is not Staff\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::Scan);
-                        recordeo.softHandle();
-                        return;
-                    } else {
-                        root->setProperty("appstate", AppState::Idle);
-                        return recordeo.handle();
-                    }
-                }
-                QVariantMap recordFields = recordeo.get().value("fields").toMap(); //Could need toJsonObject instead?
-                bool isStaff = recordFields.value("Is Staff", false).toBool();
-                if (!isStaff) {
-                    root->setProperty("scancontext", ScanContext::StaffTraining);
-                    return showMessage("This user is not Staff\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::Scan);
-                }
-
+        lookupUser(cardid, [=, this](UserLookup r, const QVariantMap &user) {
+            switch(r) {
+            case UserLookup::Staff:
                 setCurrentStaff(cardid);
                 completeTraining();
-            });
-        }
-    } else if  (context == ScanContext::StaffAuth && loadedPrint.userID != "" && prev == AppState::Scan) {
-        if (isCachedStaff) {
-            printStartCheck(true);
-        } else {
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
-                if (recordeo.isError()) {
-                    if (recordeo.errorLevel() <= El::Trivial) {
-                        recordeo.softHandle();
-                        return showMessage("This user is not Staff", "OK", AppState::Scan);
-                    } else {
-                        root->setProperty("appstate", prev);
-                        return recordeo.handle();
-                    }
-                }
-                QVariantMap recordFields = recordeo.get().value("fields").toMap(); //Could need toJsonObject instead?
-                bool isStaff = recordFields.value("Is Staff", false).toBool();
-                if (!isStaff) return showMessage("This user is not Staff", "OK", AppState::Scan);
+                break;
+            case UserLookup::NotStaff:
+            case UserLookup::NotFound:
+                root->setProperty("scancontext", ScanContext::StaffTraining);
+                showMessage("This user is not Staff\nPlease ask a staff member for\nour 3D print training and have them\nscan their UCard to continue", "Training Completed", AppState::Scan);
+                break;
+            default:
+                root->setProperty("appstate", AppState::Idle);
+                break;
+            }
+        });
+    } else if (context == ScanContext::StaffAuth && loadedPrint.userID != "" && prev == AppState::Scan) {
+        lookupUser(cardid, [=, this](UserLookup r, const QVariantMap &user) {
+            switch(r) {
+            case UserLookup::Staff:
                 setCurrentStaff(cardid);
                 printStartCheck(true);
-            });
-        }
+                break;
+            case UserLookup::NotStaff:
+            case UserLookup::NotFound:
+                showMessage("This user is not Staff", "OK", AppState::Scan);
+                break;
+            default:
+                root->setProperty("appstate", prev);
+                break;
+            }
+        });
     } else if (!loadedPrint.userID.isNull() && !loadedPrint.userID.isEmpty()) { //NoContext
-        if (isCachedStaff) {
-            showPrintOverridePrep();
-        } else {
-            airtable->table("Users")->getRecord(QString("{User Id} = '%1'").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
-                if (recordeo.isError()) {
-                    if (recordeo.errorLevel() <= El::Trivial) {
-                        recordeo.softHandle();
-                        root->setProperty("appstate", prev);
-                        return;
-                    } else {
-                        root->setProperty("appstate", prev);
-                        return recordeo.softHandle();
-                    }
-                }
-                QVariantMap recordFields = recordeo.get().value("fields").toMap(); //Could need toJsonObject instead?
-                bool isStaff = recordFields.value("Is Staff", false).toBool();
-                if (!isStaff) {
-                    root->setProperty("appstate", prev);
-                    return;
-                }
-
+        lookupUser(cardid, [=, this](UserLookup r, const QVariantMap &user) {
+            switch(r) {
+            case UserLookup::Staff:
                 setCurrentStaff(cardid);
                 showPrintOverridePrep();
-            });
-        }
-
+                break;
+            case UserLookup::NotStaff:
+            case UserLookup::NotFound:
+            default:
+                root->setProperty("appstate", prev);
+                break;
+            }
+        });
     } else root->setProperty("appstate", prev);
-
 }
 
 void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
