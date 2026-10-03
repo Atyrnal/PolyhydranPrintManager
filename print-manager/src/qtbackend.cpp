@@ -512,7 +512,9 @@ void QTBackend::completeTraining() {
 
     airtable->table("Users")->updateRecordById(currentUser.value("id").toString(), payload);
 
-    printStartCheck(false, true);
+    lookupOngoingPrints(currentUser.value("id").toString(), [this](qint16 ct){
+        printStartCheck(false, ct, true);
+    });
 }
 
 void QTBackend::showPrintOverridePrep() {
@@ -550,6 +552,22 @@ void QTBackend::lookupUser(const QString &cardid, std::function<void(UserLookup,
     });
 }
 
+void QTBackend::lookupOngoingPrints(const QString &cardid, std::function<void(qint16 ct)> done) {
+    airtable->table("Print Log")->getRecords(QString("AND({User Id} = '%1', {Status}='Ongoing')").arg(cardid), QList<Sort>({{"Date", SortDir::DESC}}), [this, cardid, done](Eo<QList<QVariantMap>> eo){
+        if (eo.isError()) {
+            eo.handle();
+            return done(-1);
+        }
+        QList<QVariantMap> records = eo.get();
+        QSet<QString> curPrinters;
+        for (auto it = records.constBegin(); it != records.constEnd(); ++it) {
+            curPrinters.insert(it->value("fields").toMap().value("Printer", "").toString());
+        }
+        done(curPrinters.size());
+    });
+}
+
+
 void QTBackend::cardScanned(const QString &cardid) {
     ScanContext context = scancontext();
     AppState prev = appstate();
@@ -573,7 +591,9 @@ void QTBackend::cardScanned(const QString &cardid) {
                 break;
             case UserLookup::NotStaff:
                 if (!user.isEmpty()) currentUser = user;
+                lookupOngoingPrints(cardid, [this](qint16 ct){
                     printStartCheck(false, ct);
+                });
                 break;
             case UserLookup::NotFound:
                 loadedPrint.issues.insert("isRegistered", false);
@@ -634,9 +654,10 @@ void QTBackend::cardScanned(const QString &cardid) {
     } else root->setProperty("appstate", prev);
 }
 
-void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
+void QTBackend::printStartCheck(bool staffApproved, qint16 printersUsing, bool justTrained) {
     double printDuration = parseDuration(loadedPrint.printInfo["duration"]);
     if (!staffApproved) {
+        if (stnbd("requirePrinterUseCount", true) && printersUsing < 0) return showMessage("Unable to fetch printers currently in use\nPlease report this to a staff member.");
         QVariantMap recordFields = currentUser.value("fields").toMap();
         QString cicsAff = recordFields.value("Affiliation to CICS", "").toString();
         bool isCICS = cicsAff == "CICS Student" || cicsAff == "CICS Faculty or Staff";
@@ -645,8 +666,12 @@ void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
         if (stnbd("requireCics", true)) loadedPrint.issues.insert("isCICS", isCICS);
         if (stnbd("requireTraining", true))loadedPrint.issues.insert("trained", training);
         if (stnbd("requirePrintDuration", true)) loadedPrint.issues.insert("duration", printDuration);
+        if (stnbd("requirePrinterUseCount", true)) loadedPrint.issues.insert("printerUseCount", printersUsing);
         loadedPrint.issues.insert("personalFilament", loadedPrint.isPersonalFilament);
 
+        if (stnbd("requirePrinterUseCount", true) && printersUsing >= stnid("maxSimeltaneousPrinters", 2)) {
+            return showMessage(QString("You are currently using %1 printer%2\nwhich is the maximum.\nPlease wait for these to finish\nbefore starting another print.").arg(printersUsing, (printersUsing == 1) ? "" : "s"), "I Understand");
+        }
         if (stnbd("requireCics", true) && !isCICS) {
             if (stnbd("allowNonCicsPersonalFilament", true)) {
                 if (!loadedPrint.isPersonalFilament) return showMessage("Sorry, but only CICS Community Members\nmay print using Makerspace filament.", "I Understand");
@@ -658,9 +683,9 @@ void QTBackend::printStartCheck(bool staffApproved, bool justTrained) {
             root->setProperty("scancontext", ScanContext::StaffTraining);
             return showMessage("Please ask a staff member to\napprove your print or take \nour 3D Print training", "Training Completed", AppState::Scan);
         }
-        if (!staffApproved && stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDuration", 6.0) && !loadedPrint.isPersonalFilament) return showMessage("Prints cannot be longer than 6 hours\nwith Makerspace Filament");
-        if (!staffApproved && stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && isCICS) return showMessage("Prints cannot be longer than 10 hours\n");
-        if (!staffApproved && stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && !isCICS) return showMessage("Prints cannot be longer than 6 hours\n");
+        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDuration", 6.0) && !loadedPrint.isPersonalFilament) return showMessage("Prints cannot be longer than 6 hours\nwith Makerspace Filament");
+        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && isCICS) return showMessage("Prints cannot be longer than 10 hours\n");
+        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && !isCICS) return showMessage("Prints cannot be longer than 6 hours\n");
     }
     showMessage("Printing now!");
     if (pm->getPrinter(loadedPrint.printerId) == nullptr) return Error("QTBackendError", "Loaded Printer not found", El::Critical).handle();

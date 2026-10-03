@@ -86,7 +86,7 @@ private:
     void bringWindowToFront(DWORD pid);
     #endif
 
-    void printStartCheck(bool isStaff, bool justTrained=false);
+    void printStartCheck(bool isStaff, qint16 printersUsing=0, bool justTrained=false);
     double parseDuration(const QString &durationString);
     AppState appstate();
     ScanContext scancontext();
@@ -96,6 +96,7 @@ private:
     void startRfid();
     void notifyPrintReceived(const QString &title, const QString &body);
     void lookupUser(const QString &cardid, std::function<void(UserLookup, const QVariantMap &user)> done);
+    void lookupOngoingPrints(const QString &cardid, std::function<void(qint16 ct)> done);
 #ifdef Q_OS_LINUX
     bool isProcessRunning(const QStringList &names);
     bool raiseWindowKWin(const QString &jsCondition);
