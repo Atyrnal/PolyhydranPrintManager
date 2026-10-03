@@ -41,6 +41,8 @@ enum ScanContext {
     StaffTraining
 };
 
+enum class UserLookup { Staff, NotStaff, NotFound, Error };
+
 struct LoadedPrint {
     quint16 printerId;
     QString filepath;
@@ -93,6 +95,7 @@ private:
     void setCurrentStaff(QString id);
     void startRfid();
     void notifyPrintReceived(const QString &title, const QString &body);
+    void lookupUser(const QString &cardid, std::function<void(UserLookup, const QVariantMap &user)> done);
 #ifdef Q_OS_LINUX
     bool isProcessRunning(const QStringList &names);
     bool raiseWindowKWin(const QString &jsCondition);
