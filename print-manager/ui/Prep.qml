@@ -31,8 +31,8 @@ Item {
         Rectangle {
             anchors.top: prepLabel.bottom
             anchors.topMargin: 20
-            width: ((error) ? err.implicitWidth : printInfoText.implicitWidth) + 20
-            height: ((error) ? err.implicitHeight : printInfoText.implicitHeight) + 20
+            width: ((prep.error) ? err.implicitWidth : printInfoText.implicitWidth) + 20
+            height: ((prep.error) ? err.implicitHeight : printInfoText.implicitHeight) + 20
             color : Theme.background
             anchors.horizontalCenter: parent.horizontalCenter
             border.width: 2
@@ -49,7 +49,7 @@ Item {
                 anchors.topMargin: 10
                 color: Theme.text
                 font.pointSize: 18
-                visible:!error
+                visible:!prep.error
             }
             Text {
                 id:err
@@ -61,11 +61,11 @@ Item {
                 text: "Unknown Error"
                 font.pointSize: 20
                 color: "#ff2828"
-                visible:error
+                visible:prep.error
             }
         }
         Item {
-            visible: !error
+            visible: !prep.error
             width: printInfoRect.width
             height: 200
             anchors.top:printInfoRect.bottom
@@ -208,7 +208,7 @@ Item {
         onClicked: {
             rootWindow.appstate = Main.AppState.Idle
             printInfoText.text = "No print information found"
-            error = false
+            prep.error = false
         }
         width: 160
         height: 40
@@ -221,7 +221,7 @@ Item {
     }
 
     RoundButtonC {
-        visible: !error
+        visible: !prep.error
         id: beginPrintButton
         anchors.bottom: parent.bottom
         anchors.right: parent.right
@@ -231,8 +231,8 @@ Item {
             rootWindow.scancontext = Main.ScanContext.UserAuth
             rootWindow.appstate = Main.AppState.Scan
             printInfoText.text = "No print information found"
-            error = false
             backend.setLoadedPrintFilamentProvider(psfButton.checked)
+            prep.error = false
         }
         width: 160
         height: 40

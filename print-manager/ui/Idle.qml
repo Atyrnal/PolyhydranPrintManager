@@ -1,7 +1,4 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Material
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import PolyhydranPrintManager
 

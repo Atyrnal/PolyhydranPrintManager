@@ -22,7 +22,7 @@ Item { //scanFrame container
         anchors.rightMargin: 150 + 235*offset
         anchors.top: parent.top
         anchors.topMargin: 260
-        property real offset: 0
+        property real offset
 
         SequentialAnimation on offset { //Animate the card moving and LTx2A lighting up
             loops: Animation.Infinite

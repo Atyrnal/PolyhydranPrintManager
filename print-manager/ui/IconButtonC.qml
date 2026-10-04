@@ -16,10 +16,10 @@ RoundButton {
 
     background: Rectangle {
         id: bgrect
-        color: parent.down ? parent.pressed_color : parent.color
+        color: buttonRoot.down ? buttonRoot.pressed_color : buttonRoot.color
         border.width: 1
         border.color: "#fff"
-        radius: parent.radius
+        radius: buttonRoot.radius
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
