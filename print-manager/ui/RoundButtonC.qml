@@ -14,10 +14,10 @@ RoundButton {
     property alias border_color : bgrect.border.color
     background: Rectangle {
         id: bgrect
-        color: buttonRect.down ? buttonRect.pressed_color : buttonRect.color
+        color: buttonRoot.down ? buttonRoot.pressed_color : buttonRoot.color
         border.width: 1
         border.color: "#fff"
-        radius: buttonRect.radius
+        radius: buttonRoot.radius
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
