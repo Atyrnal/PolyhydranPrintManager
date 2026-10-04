@@ -145,15 +145,15 @@ void Prusa::testConnection() {
                 Log::write("PrusaPrinter("+name+"@"+hostname+")", QString("jobState updated from %1 to %2").arg(prev, jobState));
                 if (jobState == "PRINTING" || prev == "BUSY") {
                     if (prev == "PAUSED" || prev == "ATTENTION") //update latest print back to ongoing
-                        emit this->printStatusUpdated("Ongoing");
+                        emit this->printStatusUpdated(name, "Ongoing");
                 } else if (jobState == "PAUSED" || jobState == "ATTENTION") {
                     if (prev == "PRINTING" || prev == "BUSY") //update lastest print to halted
-                        emit this->printStatusUpdated("Halted");
+                        emit this->printStatusUpdated(name, "Halted");
                 } else if (jobState == "STOPPED" || jobState == "ERROR" || jobState == "IDLE") {
                     if (prev == "PAUSED" || prev == "PRINTING" || prev == "ATTENTION" || prev == "BUSY") //update latest print to failed
-                        emit this->printStatusUpdated("Failed");
+                        emit this->printStatusUpdated(name, "Failed");
                 } else if (jobState == "FINISHED") { //update latest print to completed
-                    emit this->printStatusUpdated("Completed");
+                    emit this->printStatusUpdated(name, "Completed");
                 }
             }
 

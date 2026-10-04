@@ -5,8 +5,7 @@
 #include "globalstate.hpp"
 #include <QTimer>
 
-PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {
-}
+PrinterManager::PrinterManager(QObject* parent) : QObject(parent) {}
 
 // PrinterManager::~PrinterManager() {
 //     for (quint32 i = 0; i < printers.length(); i++) {
@@ -79,6 +78,8 @@ Printer* PrinterManager::getPrinter(quint32 id) {
 quint32 PrinterManager::addPrinter(Printer* p) {
     quint32 id = nextId++;
     printers.insert(id, p);
+
+    QObject::connect(p, &Printer::printStatusUpdated, ptm, &PrintManager::onPrintStatusUpdated);
     QObject::connect(p, &Printer::connectionUpdated, this, [this, p](bool status){
         bool allResp = respondedPrinters.size() >= printerCount;
         if (!allResp && !respondedPrinters.contains(p)) {
@@ -96,9 +97,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         }
 
     });
-    QObject::connect(p, &Printer::printStatusUpdated, this, [this, id, p](QString status){
-        emit this->printStatusUpdated(id, printers.value(id)->getName(), status);
-    });
+    
     if (p->getBrand() == "BambuLab") {
         BambuLab* bblp = dynamic_cast<BambuLab*>(p);
         if (bblp == nullptr) {
@@ -160,7 +159,7 @@ void PrinterManager::removePrinter(quint32 id) {
     printers.remove(id);
 }
 
-void PrinterManager::startPrint(quint32 id, const QString &filepath, QJsonObject properties) {
+void PrinterManager::startPrinting(quint32 id, const QString &filepath, QJsonObject properties) {
     if (!printers.contains(id)) return;
     Printer* p = printers[id];
     if (p->getBrand() == "BambuLab") {

@@ -15,12 +15,11 @@ public:
     Printer* getPrinter(quint32 id);
     void removePrinter(quint32 id);
     void loadConfig(QJsonObject config);
-    void startPrint(quint32 id, const QString &filepath, QJsonObject properties = QJsonObject());
+    void startPrinting(quint32 id, const QString &filepath, QJsonObject properties = QJsonObject());
     PrintersModel* getModel() { return &model; }
 signals:
     void jobLoaded(quint32 id, const QString &filepath, QMap<QString, QString> properties);
     void jobInfoLoaded(QVariantMap properties);
-    void printStatusUpdated(quint32 id, QString printerName, QString status);
 public slots:
     void closing();
 private:

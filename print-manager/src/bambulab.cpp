@@ -312,17 +312,17 @@ void BambuLab::updateState(QByteArray latestReportBytes) {
         Log::write("BambuLabPrinter("+name+"@"+hostname+")", QString("jobState updated from %1 to %2").arg(prev, jobState));
         if (jobState == "RUNNING") {
             if (prev == "PAUSED") //update latest print back to ongoing
-                emit this->printStatusUpdated("Ongoing");
+                emit this->printStatusUpdated(name, "Ongoing");
         } else if (jobState == "PAUSED") {
             if (prev == "RUNNING") //update lastest print to halted
-                emit this->printStatusUpdated("Halted");
+                emit this->printStatusUpdated(name, "Halted");
         } else if (jobState == "IDLE") {
             if (prev == "PAUSED" || prev == "RUNNING" || prev == "PREPARE") //update latest print to failed
-                emit this->printStatusUpdated("Failed");
+                emit this->printStatusUpdated(name, "Failed");
         } else if (jobState == "FAILED") { //update latest print to failed
-            emit this->printStatusUpdated("Failed");
+            emit this->printStatusUpdated(name, "Failed");
         } else if (jobState == "FINISH") { //update latest print to completed
-            emit this->printStatusUpdated("Completed");
+            emit this->printStatusUpdated(name, "Completed");
         }
 
     }

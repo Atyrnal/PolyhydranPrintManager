@@ -20,7 +20,7 @@ Item {
     }
 
     Connections {
-        target: backend
+        target: frontman
         function onMessageReq(msg, btnText, newState) {
             messageText.text = msg
             acceptMessageButton.label_text = btnText

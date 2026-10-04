@@ -427,7 +427,7 @@ void BambuEmulator::slicerHandshake(QTcpSocket* socket, BambuLab* printer) {
 
     if (data.size() < 6) return;
     if (data[0] != (char)0xa5 || data[1] != (char)0xa5) {
-        Error("BambuEmulatorBindingError", "Invalid packet header", El::Warning);
+        Error::handle("BambuEmulatorBindingError", "Invalid packet header", El::Warning);
         return;
     }
 

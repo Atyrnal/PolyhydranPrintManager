@@ -91,13 +91,7 @@ ApplicationWindow { //Root app window
     property int transitionDuration: 1000;
 
     Connections {
-        target: backend
-        function onSetAppstate(state) {
-            appstate = state
-        }
-        function onSetAppmode(mode) {
-            appmode = mode
-        }
+        target: frontman
         function onSetDarkmode(dm) {
             Theme.isDark = dm
         }

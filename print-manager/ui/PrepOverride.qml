@@ -119,9 +119,9 @@ Item {
                         text: "Makerspace Filament"
                         id: msfButton
                         onClicked: {
-                            backend.setLoadedPrintFilamentProvider(psfButton.checked)
                             prepOverride.printIssues.personalFilament = false
                             loadPrintIssues(prepOverride.printIssues)
+                            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
                         }
                     }
                     RadioButton {
@@ -129,9 +129,9 @@ Item {
                         text: "Personal Filament"
                         id: psfButton
                         onClicked: {
-                            backend.setLoadedPrintFilamentProvider(psfButton.checked)
                             prepOverride.printIssues.personalFilament = true
                             loadPrintIssues(prepOverride.printIssues)
+                            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
                         }
                     }
                 }
@@ -211,7 +211,7 @@ Item {
     }
 
     Connections {
-        target: backend
+        target: frontman
         function onPrintIssuesLoaded(printInfo, issuesInfo) {
             prepOverride.loadPrintInfo(printInfo)
             prepOverride.printIssues = issuesInfo
@@ -253,8 +253,8 @@ Item {
             rootWindow.appstate = Main.AppState.Scan
             printInfoText.text = "No print information found"
             printIssuesText.text = "No Issues"
-            backend.setLoadedPrintFilamentProvider(psfButton.checked)
             prepOverride.error = false
+            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
         }
         width: 160
         height: 40
