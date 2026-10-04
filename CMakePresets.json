@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_CONFIG_TOOL": "OFF"
+      }
+    },
+    {
+      "name": "arch-debug",
+      "displayName": "Arch (native) Debug",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "arch-release",
+      "displayName": "Arch (native) Release",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "debian-release",
+      "displayName": "Debian Release (used inside docker/debian.Dockerfile)",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "arch-debug",     "configurePreset": "arch-debug" },
+    { "name": "arch-release",   "configurePreset": "arch-release" },
+    { "name": "debian-release", "configurePreset": "debian-release" }
+  ]
+}

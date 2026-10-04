@@ -1,4 +1,7 @@
 # syntax=docker/dockerfile:1
+# Build from the repo root:
+#   docker build -f docker/debian.Dockerfile --target export \
+#       --output type=local,dest=build/debian-release .
 FROM debian:trixie AS build
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -26,13 +29,14 @@ RUN git clone --branch v6.8.2 --depth 1 https://github.com/qt/qtmqtt.git /tmp/qt
 
 WORKDIR /src
 COPY . .
-RUN cmake -S . -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release \
- && cmake --build /build
+# Same preset layout as the host: build tree ends up in /src/build/debian-release.
+# The config tool is off by default (BUILD_CONFIG_TOOL=OFF), so it isn't built.
+RUN cmake --preset debian-release \
+ && cmake --build --preset debian-release
 
 # Collect outputs; cp -L resolves the Qt MQTT symlink into a real file
 RUN mkdir -p /out/lib \
- && cp /build/print-manager/appPolyhydranPrintManager /out/ \
- && cp /build/config-tool/appPolyhydranPrintManagerConfigTool /out/ \
+ && cp build/debian-release/print-manager/appPolyhydranPrintManager /out/ \
  && cp -L /usr/lib/x86_64-linux-gnu/libQt6Mqtt.so.6 /out/lib/
 
 # Export-only stage: contains nothing but the files we want on the host
