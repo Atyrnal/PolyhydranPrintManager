@@ -1,6 +1,7 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-    "cmake.modifyLists.enabled": false,
+    "C_Cpp.intelliSenseEngine": "disabled",
     "cmake.useCMakePresets": "always",
+    "cmake.modifyLists.addNewSourceFiles": "no",
     "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json"
 }
