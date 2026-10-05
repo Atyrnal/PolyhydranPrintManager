@@ -5,7 +5,6 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
-#include "errors.hpp"
 
 LTx2A::LTx2A(QString portName, qint32 baud) {
     scanned = QQueue<QString>();
@@ -20,18 +19,34 @@ void LTx2A::start() {
         scanned.enqueue(data); //Add the card id to queue
         emit cardScanned(); //Emit the cardScanned event (called a signal in QT)
     });
-    QObject::connect(worker, &SerialWorker::errorOccurred, [](const QString &error) {
-        Error::handle("SerialError", error, El::Critical); //Print error
+    QObject::connect(worker, &SerialWorker::errorOccurred, this, [this](const QString &error) {
+        emit errorOccured(error);
+    });
+    QObject::connect(worker, &SerialWorker::serialOpened, this, [this]() {
+        emit serialOpened();
     });
     thread->start(); //Run the thread
 }
 
 void LTx2A::stop() { //Stop and remove threads
-    worker->stop();
-    thread->quit();
-    thread->wait();
-    delete worker;
-    delete thread;
+    if (!worker) return;
+    if (worker != nullptr) worker->stop();
+    if (thread != nullptr) {
+        thread->quit();
+        thread->wait();
+        disconnect(thread);
+    }
+    if (worker != nullptr) disconnect(worker);
+    if (worker != nullptr) delete worker;
+    if (thread != nullptr) delete thread;
+    worker = nullptr;
+    thread = nullptr;
+}
+
+void LTx2A::restart(QString portName, qint32 baud) {
+    thread = new QThread; //New thread
+    worker = new SerialWorker(portName, baud); //New SerialWorker
+    start();
 }
 
 bool LTx2A::hasNext() {
@@ -50,31 +65,31 @@ SerialWorker::SerialWorker(QString portName, qint32 baud)
 
 void SerialWorker::start() {
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts(); //List of active serial ports
-    QSerialPortInfo* port = nullptr;
+    QSerialPortInfo port;
     for (int i = 0; i < ports.length(); i++) { //Iterative over avaliable ports
         QSerialPortInfo pport = ports[i];
         if (portName != "auto") { //Select port by name
             if (pport.portName() == portName) {
-                port = &pport;
+                port = pport;
                 break;
             }
         } else { //Search for ESP32 Silicon Labs CP210x chip on serial port (works most of the time)
             //Check if port vendor and product ids match the CP210x
             if (pport.hasVendorIdentifier() && pport.hasProductIdentifier() && pport.vendorIdentifier() == 0x10C4 && pport.productIdentifier() == 0xEA60) {
-                port = &pport;
+                port = pport;
                 break;
             }
         }
 
     }
-    if (port == nullptr || port->isNull()) { //If port not found
-        Check::write("Connect to RFID Scanner serial", Cl::FAIL);
+    if (port.isNull()) { //If port not found
+        //Check::write("Connect to RFID Scanner serial", Cl::FAIL);
         emit errorOccurred("Matching Serial port not found"); //Send error event
         return;
     }
     //Serial connection settings
     serial = new QSerialPort;
-    serial->setPort(*port); //Set port and info
+    serial->setPort(port); //Set port and info
     serial->setParity(QSerialPort::NoParity);
     serial->setBaudRate(baud);
     serial->setDataBits(QSerialPort::Data8);
@@ -84,20 +99,25 @@ void SerialWorker::start() {
     connect(serial, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead); //Handle reading
     connect(serial, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError err) { //Handle errors from serial port
         if (err != QSerialPort::NoError) {
-            Check::write("Connect to RFID Scanner serial", Cl::FAIL);
+            //Check::write("Connect to RFID Scanner serial", Cl::FAIL);
             emit errorOccurred(serial->errorString()); //Send error event
         }
     });
 
     if (!serial->open(QIODevice::ReadOnly)) { //Open serial connection as read only
-        Check::write("Connect to RFID Scanner serial", Cl::FAIL);
+        //Check::write("Connect to RFID Scanner serial", Cl::FAIL);
         emit errorOccurred(serial->errorString()); //Handle error opening connection
     }
-    Check::write("Connect to RFID Scanner serial", Cl::OK);
+    //Check::write("Connect to RFID Scanner serial", Cl::OK);
+    emit serialOpened();
 }
 
 void SerialWorker::stop() {
-    serial->close(); //End serial connection
+    if (!serial) return;
+    serial->disconnect(this);                // no more callbacks
+    serial->close();
+    delete serial;                           // deleted in the thread that owns it
+    serial = nullptr;
 }
 
 void SerialWorker::handleReadyRead() { //Handle recieving data

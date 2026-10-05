@@ -15,7 +15,8 @@ signals:
     void cardScanned(QString cardid);
 private:
     LTx2A* rfidReader = nullptr;
-    
+    bool connected = false;
+    bool connectedOnce = false;
 };
 
 

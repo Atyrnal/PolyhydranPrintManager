@@ -1,5 +1,7 @@
 #include "rfidmanager.h"
 #include "globalstate.hpp"
+#include "ltx2aQT.h"
+#include <QTimer>
 
 RfidManager::RfidManager(QObject* parent) : QObject(parent) {}
 
@@ -12,6 +14,25 @@ void RfidManager::startRfid() {
             QString cardid = rfidReader->getNext().replace("\"", "").trimmed();
             emit cardScanned(cardid);
         }
+    });
+    QObject::connect(rfidReader, &LTx2A::errorOccured, this, [this](const QString &error) {
+        if (!connectedOnce) {
+            Check::write("Connect to RFID Scanner serial", Cl::FAIL);
+            connectedOnce = true;
+            Error::handle("SerialError", error, El::Critical); //Print error
+        } else if (connected) {
+            Error::handle("SerialError", error, El::Critical); //Print error
+            connected = false;
+        }
+        rfidReader->stop();
+        QTimer::singleShot(10000, this, [this](){ //Attempt reconnect
+            rfidReader->restart();
+        });
+    });
+    QObject::connect(rfidReader, &LTx2A::serialOpened, this, [this]() {
+        if (!connectedOnce) Check::write("Connect to RFID Scanner serial", Cl::OK);
+        connectedOnce = true;
+        connected = true;
     });
     rfidReader->start();
 }
