@@ -34,7 +34,7 @@ public:
     virtual JobStatus getJobStatus() = 0;
 signals:
     void connectionUpdated(bool status);
-    void printStatusUpdated(QString status);
+    void printStatusUpdated(const QString& name, const QString& status);
 protected:
     QString name;
     QString model;

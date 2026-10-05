@@ -25,7 +25,6 @@ qt_add_qml_module(appPolyhydranPrintManagerConfigTool
         include/prusa.h
         src/prusa.cpp
         include/configmanager.h
-        include/qtbackend.h
         QML_FILES ui/Splash.qml
         QML_FILES ui/Welcome.qml
         QML_FILES ui/RoundButtonC.qml

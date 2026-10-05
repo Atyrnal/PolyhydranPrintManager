@@ -2,3 +2,8 @@ build/
 .git/
 .cache/
 .qtcreator/
+.vscode/
+CMakeUserPresets.json
+*.user
+.qmlls.ini
+compile_commands.json

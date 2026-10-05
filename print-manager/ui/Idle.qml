@@ -1,7 +1,4 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Material
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import PolyhydranPrintManager
 
@@ -155,7 +152,7 @@ Item { //idleFrame container
             id: orcaSlicerButton
             anchors.bottom: parent.bottom
             anchors.right: parent.right
-            onClicked: backend.orcaButtonClicked();
+            onClicked: frontman.orcaButtonClicked();
             width: 200
             height: 50
             radius: 5
@@ -172,7 +169,7 @@ Item { //idleFrame container
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             onClicked: {
-                backend.helpButtonClicked();
+                frontman.helpButtonClicked();
                 showMessage("Start by slicing your .obj file\nor selecting a sliced file\nThen scan your ID and follow the\nInstructions on screen to start your print", Main.AppState.Idle)
 
             }

@@ -24,6 +24,7 @@ tags
 .directory
 *.debug
 Makefile*
+!/Makefile
 *.prl
 *.app
 moc_*.cpp
@@ -84,6 +85,9 @@ secrets.h
 *.db
 *.conf
 .cache
+.qmlls.ini
+CMakeUserPresets.json
+compile_commands.json
 
 #More build Directories
 Debian-Release/
@@ -91,3 +95,4 @@ build/
 builds/
 release/
 releases/
+logs/

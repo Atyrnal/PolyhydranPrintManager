@@ -32,8 +32,8 @@ Item {
         Rectangle {
             anchors.top: prepLabel.bottom
             anchors.topMargin: 20
-            width: ((error) ? err.implicitWidth : printInfoText.implicitWidth) + 20
-            height: ((error) ? err.implicitHeight : printInfoText.implicitHeight) + 20
+            width: ((prepOverride.error) ? err.implicitWidth : printInfoText.implicitWidth) + 20
+            height: ((prepOverride.error) ? err.implicitHeight : printInfoText.implicitHeight) + 20
             color : Theme.background
             anchors.horizontalCenter: parent.horizontalCenter
             border.width: 2
@@ -50,7 +50,7 @@ Item {
                 anchors.topMargin: 10
                 color: Theme.text
                 font.pointSize: 12
-                visible:!error
+                visible:!prepOverride.error
             }
             Text {
                 id:err
@@ -62,7 +62,7 @@ Item {
                 text: "Selected printer is not connected"
                 font.pointSize: 20
                 color: "#ff2828"
-                visible:error
+                visible:prepOverride.error
             }
         }
         Rectangle {
@@ -75,7 +75,7 @@ Item {
             border.width: 2
             border.color: Theme.text
             radius: 2
-            visible:!error
+            visible:!prepOverride.error
             id: printIssuesRect
             Text {
                 id:printIssuesText
@@ -91,7 +91,7 @@ Item {
             }
         }
         Item {
-            visible: !error
+            visible: !prepOverride.error
             width: printInfoRect.width
             height: 200
             anchors.top:printIssuesRect.bottom
@@ -117,21 +117,29 @@ Item {
                     RadioButton {
                         checked:true
                         text: "Makerspace Filament"
+                        Material.theme: Theme.isDark ? Material.Dark : Material.Light
+                        Material.foreground: Theme.text
+                        Material.primary: Theme.primary
+                        Material.accent : Theme.primary
                         id: msfButton
                         onClicked: {
-                            printIssues.personalFilament = false
-                            loadPrintIssues(printIssues)
-                            backend.setLoadedPrintFilamentProvider(psfButton.checked)
+                            prepOverride.printIssues.personalFilament = false
+                            loadPrintIssues(prepOverride.printIssues)
+                            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
                         }
                     }
                     RadioButton {
                         checked:false
                         text: "Personal Filament"
+                        Material.theme: Theme.isDark ? Material.Dark : Material.Light
+                        Material.foreground: Theme.text
+                        Material.primary: Theme.primary
+                        Material.accent : Theme.primary
                         id: psfButton
                         onClicked: {
-                            printIssues.personalFilament = true
-                            loadPrintIssues(printIssues)
-                            backend.setLoadedPrintFilamentProvider(psfButton.checked)
+                            prepOverride.printIssues.personalFilament = true
+                            loadPrintIssues(prepOverride.printIssues)
+                            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
                         }
                     }
                 }
@@ -211,10 +219,10 @@ Item {
     }
 
     Connections {
-        target: backend
+        target: frontman
         function onPrintIssuesLoaded(printInfo, issuesInfo) {
             prepOverride.loadPrintInfo(printInfo)
-            printIssues = issuesInfo
+            prepOverride.printIssues = issuesInfo
             prepOverride.loadPrintIssues(issuesInfo)
         }
     }
@@ -229,7 +237,7 @@ Item {
             rootWindow.appstate = Main.AppState.Idle
             printInfoText.text = "No print information found"
             printIssuesText.text = "No Issues"
-            error = false
+            prepOverride.error = false
         }
         width: 160
         height: 40
@@ -242,7 +250,7 @@ Item {
     }
 
     RoundButtonC {
-        visible: !error
+        visible: !prepOverride.error
         id: beginPrintOverrideButton
         anchors.bottom: parent.bottom
         anchors.right: parent.right
@@ -253,8 +261,8 @@ Item {
             rootWindow.appstate = Main.AppState.Scan
             printInfoText.text = "No print information found"
             printIssuesText.text = "No Issues"
-            error = false
-            backend.setLoadedPrintFilamentProvider(psfButton.checked)
+            prepOverride.error = false
+            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
         }
         width: 160
         height: 40

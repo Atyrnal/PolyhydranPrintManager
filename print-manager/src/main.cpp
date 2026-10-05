@@ -10,7 +10,6 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <QQmlContext>
-#include "qtbackend.h"
 #include <QQuickWindow>
 #include <QFile>
 #include <QDir>
@@ -84,11 +83,11 @@ int main(int argc, char *argv[])
     if (!uploadDir.mkpath(".")) Error::handle("ConfigError", "Failed to create uploaded directory", El::Critical);
 
     gsi.setApp(&app);
-    QTBackend bk(&engine, &engine);
+    gsi.setEngine(&engine);
     engine.loadFromModule("PolyhydranPrintManager", "Main"); //Load the QML Main.qml declarative ui file
 
     QObject* root = engine.rootObjects().at(0); //Get the root object (in this case the Window)
-    bk.setRoot(root);
+    gsi.setRoot(root);
 
     auto config = readJsonFile(GlobalState::instance().getAppDir().filePath("configuration.json"), CONFIG_MAX_SIZE);
     if (config.isError()) {
@@ -97,7 +96,7 @@ int main(int argc, char *argv[])
         Error("ConfigError", "Failed to load configuration file", El::Fatal).handle();
     } else {
         Check::write("Config file configuration.json loaded", Cl::OK);
-        bk.loadConfig(config.get());
+        gsi.loadConfig(config.get());
     }
 
 

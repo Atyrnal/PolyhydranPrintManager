@@ -18,6 +18,7 @@ public:
 signals:
     void cardScanned(QString userID);
     void errorOccurred(QString error);
+    void serialOpened();
 public slots:
     void start();
     void stop();
@@ -39,10 +40,13 @@ public:
     bool hasNext();
     QString getNext();
     void start();
+    void restart(QString portName = "auto", qint32 baud = QSerialPort::BaudRate::Baud115200);
 public slots:
     void stop();
 signals:
     void cardScanned();
+    void errorOccured(const QString &error);
+    void serialOpened();
 private:
     QQueue<QString> scanned;
     QThread* thread;

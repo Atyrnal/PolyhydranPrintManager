@@ -10,19 +10,21 @@ RoundButton {
     property alias text_color : label.color
     property color color: "#cccccc"
     property color pressed_color : "#aaaaaa"
+    property color disabled_color : "#454545"
     property alias border_width : bgrect.border.width
     property alias border_color : bgrect.border.color
+    property bool enabled : true
     background: Rectangle {
         id: bgrect
-        color: parent.down ? parent.pressed_color : parent.color
+        color: (buttonRoot.enabled) ? (buttonRoot.down ? buttonRoot.pressed_color : buttonRoot.color) : buttonRoot.disabled_color
         border.width: 1
         border.color: "#fff"
-        radius: parent.radius
+        radius: buttonRoot.radius
         MouseArea {
             anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
+            cursorShape: (buttonRoot.enabled) ? Qt.PointingHandCursor : Qt.ForbiddenCursor
             acceptedButtons: Qt.NoButton
-            hoverEnabled: true
+            hoverEnabled: buttonRoot.enabled
         }
     }
 

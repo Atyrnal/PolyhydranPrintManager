@@ -1,8 +1,10 @@
 #ifndef ERRORHANDLER_HPP
 #define ERRORHANDLER_HPP
 
-#include "qtbackend.h"
 #include "errors.hpp"
+#include <QFile>
+#include <QQueue>
+#include <QSharedPointer>
 
 class ErrorHandler{
 public:
@@ -33,7 +35,6 @@ public:
     static void check(const class Check &check);
     static void initLogFile(const QString &path);
     static void initLogFileTimestamp(const QString &dirpath);
-    static inline QTBackend* bk = nullptr;
 private:
     static QString genLogLine(QDateTime time, const QString &lvl, const QString &content);
     static QString genLogLineLog(QDateTime time, const QString &type, const QString &content);

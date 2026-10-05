@@ -32,6 +32,7 @@ private:
     QString jobState = "UNDEFINED";
     bool connectedOnce = false;
     void sendGCode(QString filepath);
+    qint8 connectFailCount = 0;
     //bool testConnection();
 };
 

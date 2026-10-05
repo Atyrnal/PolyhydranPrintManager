@@ -6,10 +6,8 @@
 
 
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Controls
 import QtQuick.Controls.Material
-import QtQuick.Dialogs
 import QtQuick.Layouts
 import PolyhydranPrintManager
 
@@ -93,13 +91,7 @@ ApplicationWindow { //Root app window
     property int transitionDuration: 1000;
 
     Connections {
-        target: backend
-        function onSetAppstate(state) {
-            appstate = state
-        }
-        function onSetAppmode(mode) {
-            appmode = mode
-        }
+        target: frontman
         function onSetDarkmode(dm) {
             Theme.isDark = dm
         }
@@ -110,7 +102,7 @@ ApplicationWindow { //Root app window
         anchors.fill: parent;
         StackLayout {
             anchors.fill: parent
-            currentIndex: appmode
+            currentIndex: rootWindow.appmode
             Rectangle {
                 color: Theme.background
 
@@ -165,7 +157,7 @@ ApplicationWindow { //Root app window
 
                 StackLayout {
 
-                currentIndex: appstate
+                currentIndex: rootWindow.appstate
                 anchors.fill: parent
 
                 Idle {

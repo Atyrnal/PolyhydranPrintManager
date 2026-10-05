@@ -1,6 +1,4 @@
 import QtQuick
-import QtQuick.Controls
-import QtQuick.Controls.Material
 import PolyhydranPrintManager
 
 Item {
@@ -22,7 +20,7 @@ Item {
     }
 
     Connections {
-        target: backend
+        target: frontman
         function onMessageReq(msg, btnText, newState) {
             messageText.text = msg
             acceptMessageButton.label_text = btnText
