@@ -135,8 +135,7 @@ void GlobalState::loadConfig(QJsonObject cfg) {
 
     //Load specific settings
     emit frontman->setDarkmode(stnb("darkMode"));
-
-    rfidman->startRfid();
-    //Load printer config
+    
     printerman->loadConfig(cfg);
+    rfidman->startRfid();
 }

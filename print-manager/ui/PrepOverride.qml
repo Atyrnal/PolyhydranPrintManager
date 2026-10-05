@@ -117,6 +117,10 @@ Item {
                     RadioButton {
                         checked:true
                         text: "Makerspace Filament"
+                        Material.theme: Theme.isDark ? Material.Dark : Material.Light
+                        Material.foreground: Theme.text
+                        Material.primary: Theme.primary
+                        Material.accent : Theme.primary
                         id: msfButton
                         onClicked: {
                             prepOverride.printIssues.personalFilament = false
@@ -127,6 +131,10 @@ Item {
                     RadioButton {
                         checked:false
                         text: "Personal Filament"
+                        Material.theme: Theme.isDark ? Material.Dark : Material.Light
+                        Material.foreground: Theme.text
+                        Material.primary: Theme.primary
+                        Material.accent : Theme.primary
                         id: psfButton
                         onClicked: {
                             prepOverride.printIssues.personalFilament = true

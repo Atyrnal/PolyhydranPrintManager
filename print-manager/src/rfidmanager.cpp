@@ -4,6 +4,7 @@
 RfidManager::RfidManager(QObject* parent) : QObject(parent) {}
 
 void RfidManager::startRfid() {
+    //TODO: connection / lifecycle management; Include resetting the esp via serial if needed?.
     rfidReader = new LTx2A(stnsd("rfidReaderPortName", "auto"));
     QObject::connect(gsi.getApp(), &QCoreApplication::aboutToQuit, rfidReader, &LTx2A::stop); //Connect the aboutToQuit app event to the rfidReader's stop function
     QObject::connect(rfidReader, &LTx2A::cardScanned, this, [this]() { //Connect the rfidReader cardScanned event to the lambda

@@ -76,7 +76,7 @@ void PrintManager::startLoadedPrint() {
     };
     if (loadedPrint.staffApproved) printLogInfo.insert("Staff Approver ID", usm->getCurrentStaffId());
     ait->table("Print Log")->createRecord(printLogInfo);
-    Log::write("PrintManager", "Starting Print");
+    Log::write("PrintManager", QString("Starting Print on Printer %1").arg(prm->getPrinter(loadedPrint.printerId)->getName()));
     prm->startPrinting(loadedPrint.printerId, loadedPrint.filepath);
     ftm->showMessage("Printing now!");
 }
@@ -84,6 +84,8 @@ void PrintManager::startLoadedPrint() {
 void PrintManager::onPrintStatusUpdated(const QString &printerName, const QString &status) const {
     if (!stnbd("updatePrintStatuses", true)) return;
     
+    Log::write("PrintManager", QString("Print status updated to %1 for printer %2").arg(status, printerName));
+
     ait->table("Print Log")->getRecord(QString("{Printer} = '%1'").arg(printerName), QList<Sort>({{"Date", SortDir::DESC}}), [=, this](Eo<QVariantMap> recordeo){
         if (recordeo.isError()) return recordeo.softHandle();
         QVariantMap recordFields = recordeo.get().value("fields").toMap();
@@ -92,7 +94,7 @@ void PrintManager::onPrintStatusUpdated(const QString &printerName, const QStrin
         std::chrono::milliseconds diff = QDateTime::currentDateTimeUtc() - recordCreated;
         if (curstatus == "Ongoing" || curstatus == "Halted" || curstatus == "Unknown") {
             if (status == "Failed" && diff <= std::chrono::milliseconds(300000)) //If print is stopped in the first 5 minutes
-            ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", "Aborted"}});
+                ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", "Aborted"}});
             else
             ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", status}});
         }

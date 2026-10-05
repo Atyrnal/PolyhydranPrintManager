@@ -31,8 +31,8 @@ Item {
         Rectangle {
             anchors.top: prepLabel.bottom
             anchors.topMargin: 20
-            width: ((prep.error) ? err.implicitWidth : printInfoText.implicitWidth) + 20
-            height: ((prep.error) ? err.implicitHeight : printInfoText.implicitHeight) + 20
+            width: printInfoText.implicitWidth + 20
+            height: printInfoText.implicitHeight + 20
             color : Theme.background
             anchors.horizontalCenter: parent.horizontalCenter
             border.width: 2
@@ -49,21 +49,21 @@ Item {
                 anchors.topMargin: 10
                 color: Theme.text
                 font.pointSize: 18
-                visible:!prep.error
+                visible:true
             }
-            Text {
+        }
+        Text {
                 id:err
-                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.horizontalCenter: printInfoRect.horizontalCenter
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                anchors.top: parent.top
+                anchors.top: printInfoRect.bottom
                 anchors.topMargin: 10
                 text: "Unknown Error"
-                font.pointSize: 20
+                font.pointSize: 14
                 color: "#ff2828"
                 visible:prep.error
             }
-        }
         Item {
             visible: !prep.error
             width: printInfoRect.width
@@ -221,18 +221,20 @@ Item {
     }
 
     RoundButtonC {
-        visible: !prep.error
+        enabled: !prep.error
         id: beginPrintButton
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.rightMargin: 10
         anchors.bottomMargin: 10
         onClicked: {
-            rootWindow.scancontext = Main.ScanContext.UserAuth
-            rootWindow.appstate = Main.AppState.Scan
-            printInfoText.text = "No print information found"
-            prep.error = false
-            frontman.setLoadedPrintFilamentProvider(psfButton.checked)
+            if (enabled) {
+                rootWindow.scancontext = Main.ScanContext.UserAuth
+                rootWindow.appstate = Main.AppState.Scan
+                printInfoText.text = "No print information found"
+                prep.error = false
+                frontman.setLoadedPrintFilamentProvider(psfButton.checked)
+            }
         }
         width: 160
         height: 40
