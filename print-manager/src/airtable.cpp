@@ -58,6 +58,8 @@ void AirtableTable::createRecord(QVariantMap recordFields) {
     QNetworkReply* reply = postRaw(QString("%1/v0/%2/%3").arg(dbHostname, dbBase, dbTable), QJsonDocument(payload).toJson());
     QObject::connect(reply, &QNetworkReply::finished, reply, [=]() {
         if (reply->error() != QNetworkReply::NoError) Error("AirtableNetworkError", reply->errorString(), El::Warning).softHandle();
+        //Log::write("AirtableCreateRecordReply", reply->readAll());
+        Log::write("Airtable", "CreateRecord Reply Recieved");
         reply->deleteLater();
     });
 
@@ -78,6 +80,8 @@ void AirtableTable::updateRecordById(QString recordId, QVariantMap recordFields)
     QNetworkReply* reply = patchRaw(QString("%1/v0/%2/%3/%4").arg(dbHostname, dbBase, dbTable, recordId), QJsonDocument(payload).toJson());
     QObject::connect(reply, &QNetworkReply::finished, reply, [=]() {
         if (reply->error() != QNetworkReply::NoError) Error("AirtableNetworkError", reply->errorString(), El::Warning).softHandle();
+        //Log::write("AirtableUpdateRecordReply", reply->readAll());
+        Log::write("Airtable", "UpdateRecord Reply Recieved");
         reply->deleteLater();
     });
 }
