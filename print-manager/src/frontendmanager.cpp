@@ -21,8 +21,6 @@
 #include <QStandardPaths>
 #endif
 
-//#define PRINTING_CERT_ID "recY34WO6fex1KMxO"
-
 #define root GlobalState::instance().getRoot()
 
 FrontendManager::FrontendManager(QObject* parent) : QObject(parent) {}
@@ -87,7 +85,7 @@ Q_INVOKABLE void FrontendManager::fileUploaded(const QUrl &fileUrl) {
     if (prm->getPrinter(lpid) == nullptr) return;
     propertiesForJS.insert("printerName", prm->getPrinter(lpid)->getName());
     propertiesForJS.insert("connected", prm->getPrinter(lpid)->getConnectionStatus());
-    propertiesForJS.insert("jobstatus", prm->getPrinter(lpid)->getJobStatus());
+    propertiesForJS.insert("jobStatus", prm->getPrinter(lpid)->getJobStatus());
     Log::write("FrontendManager", "Loaded print info for: " + filepath);
     //emit signals to main loop and QML to update appstate and load print files
     //Printer is online

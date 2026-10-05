@@ -116,7 +116,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
                     if (getPrinter(id) == nullptr) return;
                     propertiesForJS.insert("printerName", getPrinter(id)->getName());
                     propertiesForJS.insert("connected", getPrinter(id)->getConnectionStatus());
-                    propertiesForJS.insert("jobstatus", getPrinter(id)->getJobStatus());
+                    propertiesForJS.insert("jobStatus", getPrinter(id)->getJobStatus());
                     emit this->jobLoaded(id, filepath, properties);
                     emit this->jobInfoLoaded(propertiesForJS);
                 });
@@ -141,7 +141,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         }
         propertiesForJS.insert("printerName", getPrinter(id)->getName());
         propertiesForJS.insert("connected", getPrinter(id)->getConnectionStatus());
-        propertiesForJS.insert("jobstatus", getPrinter(id)->getJobStatus());
+        propertiesForJS.insert("jobStatus", getPrinter(id)->getJobStatus());
         emit this->jobInfoLoaded(propertiesForJS);
 
     });
