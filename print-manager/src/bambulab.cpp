@@ -154,10 +154,12 @@ void BambuLab::setAccessCode(QString accessCode) {
 void BambuLab::startPrint(const QString &filePath) {
     QFileInfo fInfo = QFileInfo(filePath);
     if (fInfo.fileName().endsWith(".gcode.3mf")) {
+        emit printStartResult(false);
         Error::handle("BambuLabPrintError", "Attempted to start project print with no options", El::Warning);
     } else if (fInfo.fileName().startsWith(".gcode")) {
         startPrintGCode(filePath);
     } else {
+        emit printStartResult(false);
         Error::handle("BambuLabPrintError", "File has invalid type: " + filePath, El::Warning);
     }
 }
@@ -170,13 +172,14 @@ void BambuLab::startPrint(const QString &filePath, BambuPrintOptions opt) {
         Error::softHandle("BambuLabPrintError", "Provided print options when printing non-project gcode file", El::Debug);
         startPrintGCode(filePath);
     } else {
+        emit printStartResult(false);
         Error::handle("BambuLabPrintError", "File has invalid type: " + filePath, El::Warning);
     }
 }
 
 void BambuLab::startPrintGCode(const QString &fileName) {
-    if (!connectionStatus) return;
-    if (!requestTopic.isValid()) return;
+    if (!connectionStatus) return emit printStartResult(false);;
+    if (!requestTopic.isValid()) return emit printStartResult(false);;
     QObject::connect(ftps, &FtpsClient::finished, this, [this, &fileName](bool success, const QString &error) {
         if (success) {
             QJsonObject request{
@@ -189,8 +192,10 @@ void BambuLab::startPrintGCode(const QString &fileName) {
             this->mqtt->publish(requestTopic, QJsonDocument(request).toJson(QJsonDocument::Compact));
             this->sequenceId++;
             Log::write("BambuLabPrinter("+name+"@"+hostname+")", "Sent gcode print command");
+            emit printStartResult(true);
             //qDebug() <<"Sending print request"<< QJsonDocument(request).toJson(QJsonDocument::Compact);
         } else {
+            emit printStartResult(false);
             Error::handle("BambuLabFtpsError", error, El::Critical);
         }
     });
@@ -198,14 +203,15 @@ void BambuLab::startPrintGCode(const QString &fileName) {
 }
 
 void BambuLab::startPrintProject(const QString &fileName, const BambuPrintOptions &opt) {
-    if (!connectionStatus) return;
-    if (!requestTopic.isValid()) return;
+    if (!connectionStatus) return emit printStartResult(false);;
+    if (!requestTopic.isValid()) return emit printStartResult(false);;
     QObject::connect(ftps, &FtpsClient::finished, this, [this, fileName, opt](bool success, const QString &error) {
         if (success) {
             // BambuPrintOptions opt(QFileInfo(fileName).fileName());
             //opt.setAmsMapping(QList<qint8>{3});//TODO: Make ams mappings dynamic for prints uploaded directly, for slicer prints steal them from the slicer's mqtt request to the emulator
             requestPrintProject(opt);
         } else {
+            emit printStartResult(false);
             Error::handle("BambuLabFtpsError", error, El::Critical);
         }
     }, Qt::SingleShotConnection);
@@ -233,8 +239,8 @@ void BambuLab::requestPushall() {
 }
 
 void BambuLab::requestPrintProject(const BambuPrintOptions &options) {
-    if (!connectionStatus) return;
-    if (!requestTopic.isValid()) return;
+    if (!connectionStatus) return emit printStartResult(false);;
+    if (!requestTopic.isValid()) return emit printStartResult(false);;
     QJsonObject parameters {
         {"sequence_id", QString::number(this->sequenceId++)},
         {"command", "project_file"},
@@ -265,6 +271,7 @@ void BambuLab::requestPrintProject(const BambuPrintOptions &options) {
     };
     this->mqtt->publish(requestTopic, QJsonDocument(request).toJson(QJsonDocument::Compact));
     Log::write("BambuLabPrinter("+name+"@"+hostname+")", "Sent project print command");
+    emit printStartResult(true);
     //qDebug() <<"Sending print request"<< QJsonDocument(request);
 }
 

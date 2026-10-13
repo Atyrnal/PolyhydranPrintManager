@@ -123,6 +123,6 @@ void FrontendManager::showPrintOverridePrep() {
     if (prm->getPrinter(lp.printerId) != nullptr) propertiesForJS.insert("printerName", prm->getPrinter(lp.printerId)->getName());
     propertiesForJS.insert("connected", (prm->getPrinter(lp.printerId) != nullptr) ? prm->getPrinter(lp.printerId)->getConnectionStatus() : false);
     propertiesForJS.insert("jobstatus", (prm->getPrinter(lp.printerId) != nullptr) ? prm->getPrinter(lp.printerId)->getJobStatus() : Printer::JobStatus::Error);
-    emit printIssuesLoaded(propertiesForJS, lp.issues);
+    emit printIssuesLoaded(propertiesForJS, lp.issues.values());
     setAppState(AppState::PrepOverride);
 }

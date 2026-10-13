@@ -80,6 +80,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
     printers.insert(id, p);
 
     QObject::connect(p, &Printer::printStatusUpdated, ptm, &PrintManager::onPrintStatusUpdated);
+    QObject::connect(p, &Printer::printStartResult, this, [this](bool success){ emit printStartResult(success); });
     QObject::connect(p, &Printer::connectionUpdated, this, [this, p](bool status){
         bool allResp = respondedPrinters.size() >= printerCount;
         if (!allResp && !respondedPrinters.contains(p)) {

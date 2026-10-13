@@ -199,17 +199,20 @@ Item {
 
     function loadPrintIssues(issuesInfo) {
         let op = ""
-        if (issuesInfo.hasOwnProperty("isRegistered") && !issuesInfo.isRegistered) { printIssuesText.text = "User not registered"; return; }
-        if (issuesInfo.hasOwnProperty("trained") && !issuesInfo.trained) op+="\nTraining not completed"
-        if (issuesInfo.hasOwnProperty("isCICS") && issuesInfo.hasOwnProperty("duration") && issuesInfo.hasOwnProperty("personalFilament")) {
-            if (issuesInfo.isCICS) {
-                if (issuesInfo.personalFilament && issuesInfo.duration > 10) op+="\nPrint longer than 10 hours"
-                if (!issuesInfo.personalFilament && issuesInfo.duration > 6) op+="\nPrinting longer than 6 hours with Makerspace Filament"
-            } else {
-                if(!issuesInfo.personalFilament) op+="\nNon-CICS printing with Makerspace Filament"
-                if(issuesInfo.duration > 6) op+="\nNon-CICS printing longer than 6 hours"
-            }
-        }     
+        for (let i = 0; i < issuesInfo.length; i++) {
+            op += "\n" + issuesInfo[i];
+        } 
+        // if (issuesInfo.hasOwnProperty("isRegistered") && !issuesInfo.isRegistered) { printIssuesText.text = "User not registered"; return; }
+        // if (issuesInfo.hasOwnProperty("trained") && !issuesInfo.trained) op+="\nTraining not completed"
+        // if (issuesInfo.hasOwnProperty("isCICS") && issuesInfo.hasOwnProperty("duration") && issuesInfo.hasOwnProperty("personalFilament")) {
+        //     if (issuesInfo.isCICS) {
+        //         if (issuesInfo.personalFilament && issuesInfo.duration > 10) op+="\nPrint longer than 10 hours"
+        //         if (!issuesInfo.personalFilament && issuesInfo.duration > 6) op+="\nPrinting longer than 6 hours with Makerspace Filament"
+        //     } else {
+        //         if(!issuesInfo.personalFilament) op+="\nNon-CICS printing with Makerspace Filament"
+        //         if(issuesInfo.duration > 6) op+="\nNon-CICS printing longer than 6 hours"
+        //     }
+        // }     
         if (op.length > 1) {
             printIssuesText.text = op.slice(1)
         } else {

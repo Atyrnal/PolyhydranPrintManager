@@ -45,7 +45,7 @@ public:
 signals:
     void printLoaded(quint32 id, const QString &gcodeFilepath, const QMap<QString, QString> &printInfo);
     void printInfoLoaded(const QVariantMap &printInfo);
-    void printIssuesLoaded(const QVariantMap &printInfo, const QVariantMap &printIssues);
+    void printIssuesLoaded(const QVariantMap &printInfo, const QStringList &printIssues);
     void messageReq(const QString &message, const QString &buttonText, const int &redirectState);
     void setDarkmode(bool dm);
     void closing();

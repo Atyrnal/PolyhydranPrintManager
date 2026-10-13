@@ -1,13 +1,19 @@
 #include "printmanager.h"
+#include "frontendmanager.h"
 #include "globalstate.hpp"
+#include <qobject.h>
 
 PrintManager::PrintManager(QObject* parent) : QObject(parent) {}
+
+quint8 PrintManager::countFilaments(QMap<QString, QString> printProperties) {
+    return ((printProperties.contains("filament") && printProperties["filament"] != "") ? printProperties["filament"] : printProperties["filamentType"]).split(",").count();
+}
 
 void PrintManager::setPrintUser(QString userid) {
     loadedPrint.userID =userid;
 }
-void PrintManager::addPrintIssue(QString k, QVariant v) {
-    loadedPrint.issues.insert(k, v);
+void PrintManager::addPrintIssue(QString v) {
+    loadedPrint.issues.insert(v);
 }
 
 void PrintManager::setLoadedPrintFilament(bool personal) {
@@ -19,37 +25,66 @@ LoadedPrint PrintManager::getLoadedPrint() const {
 }
 
 void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, bool justTrained) {
+    #define lmbs(x, y, z) if (ok) { message = (x); button=(y); s=(z); ok=false; }
+    #define lmb(x, y) lmbs(x, y, AppState::Idle)
+    #define lm(x) lmb(x, "OK")
+    ftm->setAppState(AppState::Loading);
     double printDuration = parseDuration(loadedPrint.printInfo["duration"]);
+    qint8 filamentTypeCount = countFilaments(loadedPrint.printInfo);
     if (!staffApproved) {
+        bool ok = true;
+        QString message = "";
+        QString button = "OK";
+        AppState s = AppState::Idle;
         if (stnbd("requirePrinterUseCount", true) && printersUsing < 0) return ftm->showMessage("Unable to fetch printers currently in use\nPlease report this to a staff member.");
     
         QString cicsAff = usm->getCurrentUser().value("Affiliation to CICS", "").toString();
         bool isCICS = cicsAff == "CICS Student" || cicsAff == "CICS Faculty or Staff";
         bool training = justTrained || usm->getCurrentUser().value("Certificates", QList<QString>()).toList().contains(stnsd("printingCertificateRecordId", "NONE")); //Need to implement some form of join or something idek
 
-        if (stnbd("requireCics", true)) loadedPrint.issues.insert("isCICS", isCICS);
-        if (stnbd("requireTraining", true))loadedPrint.issues.insert("trained", training);
-        if (stnbd("requirePrintDuration", true)) loadedPrint.issues.insert("duration", printDuration);
-        if (stnbd("requirePrinterUseCount", true)) loadedPrint.issues.insert("printerUseCount", printersUsing);
-        loadedPrint.issues.insert("personalFilament", loadedPrint.isPersonalFilament);
+        // if (stnbd("requireCics", true)) loadedPrint.issues.insert("isCICS", isCICS);
+        // if (stnbd("requireTraining", true))loadedPrint.issues.insert("trained", training);
+        // if (stnbd("requirePrintDuration", true)) loadedPrint.issues.insert("duration", printDuration);
+        // if (stnbd("requirePrinterUseCount", true)) loadedPrint.issues.insert("printerUseCount", printersUsing);
+        // if (stnbd("requireFilamentTypeCount", false)) loadedPrint.issues.insert("filamentTypeCount", filamentTypeCount);
+        // loadedPrint.issues.insert("personalFilament", loadedPrint.isPersonalFilament);
 
         if (stnbd("requirePrinterUseCount", true) && printersUsing >= stnid("maxSimeltaneousPrinters", 2)) {
-            return ftm->showMessage(QString("You are currently using %1 printer%2\nwhich is the maximum.\nPlease wait for these to finish\nbefore starting another print.").arg(QString::number(printersUsing), (printersUsing == 1) ? "" : "s"), "I Understand");
+            loadedPrint.issues.insert(QString("Already using %1 printer%2").arg(printersUsing, (printersUsing == 1) ? "" : "s"));
+            lmb(QString("You are currently using %1 printer%2\nwhich is the maximum.\nPlease wait for these to finish\nbefore starting another print.").arg(QString::number(printersUsing), (printersUsing == 1) ? "" : "s"),"I Understand") 
         }
         if (stnbd("requireCics", true) && !isCICS) {
             if (stnbd("allowNonCicsPersonalFilament", true)) {
-                if (!loadedPrint.isPersonalFilament) return ftm->showMessage("Sorry, but only CICS Community Members\nmay print using Makerspace filament.", "I Understand");
+                if (!loadedPrint.isPersonalFilament) {
+                    loadedPrint.issues.insert("Non-CICS printing with makerspace filament");
+                    lmb("Sorry, but only CICS Community Members\nmay print using Makerspace filament.","I Understand")
+                }
             } else {
-                return ftm->showMessage("Sorry, but only CICS Community Members\ncan print at the\nPhysical Computing Makerspace", "I Understand");
+                loadedPrint.issues.insert("Non-CICS printing");
+                lmb("Sorry, but only CICS Community Members\ncan print at the\nPhysical Computing Makerspace", "I Understand")
             }
         }
         if (stnbd("requireTraining", true) && !training) {
             ftm->setScanContext(ScanContext::StaffTraining);
-            return ftm->showMessage("Please ask a staff member to\napprove your print or take \nour 3D Print training", "Training Completed", AppState::Scan);
+            loadedPrint.issues.insert("Untrained");
+            lmbs("Please ask a staff member to\napprove your print or take \nour 3D Print training", "Training Completed", AppState::Scan)
         }
-        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDuration", 6.0) && !loadedPrint.isPersonalFilament) return ftm->showMessage("Prints cannot be longer than 6 hours\nwith Makerspace Filament");
-        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && isCICS) return ftm->showMessage("Prints cannot be longer than 10 hours\n");
-        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && !isCICS) return ftm->showMessage("Prints cannot be longer than 6 hours\n");
+        if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDuration", 6.0) && !loadedPrint.isPersonalFilament) {
+            loadedPrint.issues.insert(QString("Longer than %1 hours with makerspace filament").arg(stndd("maxPrintDuration", 6.0)));
+            lm(QString("Prints cannot be longer than %1 hours\nwith Makerspace Filament").arg(stndd("maxPrintDuration", 6.0)))
+        } else if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && isCICS) {
+            loadedPrint.issues.insert(QString("Longer than %1 hours with personal filament").arg(stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0))));
+            lm(QString("Prints cannot be longer than %1 hours").arg(stndd("maxPrintDurationPersonalFilament", stndd("maxPrintDuration", 6.0))))
+        } else if (stnbd("requirePrintDuration", true) && printDuration > stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0)) && loadedPrint.isPersonalFilament && !isCICS) {
+            loadedPrint.issues.insert(QString("Non-CICS longer than %1 hours").arg(stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0))));
+            lm(QString("Prints cannot be longer than %1 hours").arg(stndd("maxPrintDurationNonCics", stndd("maxPrintDuration", 6.0))))
+        }
+        if (stnbd("requireFilamentTypeCount", false) && filamentTypeCount > stnid("maxFilamentTypeCount", 2)) {
+            loadedPrint.issues.insert(QString("More than %1 filament type%2 (%3)").arg(QString::number(stnid("maxFilamentTypeCount", 2)), (filamentTypeCount == 1) ? "" : "s", QString::number(filamentTypeCount)));
+            lm(QString("Prints cannot have more than %1\n filament type%2/color%2 without\nstaff approval.").arg(QString::number(stnid("maxFilamentTypeCount", 2)), (filamentTypeCount == 1) ? "" : "s"));
+        }
+
+        if (!ok) return ftm->showMessage(message, button, s);
     } else {
         loadedPrint.staffApproved = true;
     }
@@ -72,13 +107,22 @@ void PrintManager::startLoadedPrint() {
         {"Filament Type", (loadedPrint.printInfo.contains("filament") && loadedPrint.printInfo["filament"] != "") ? loadedPrint.printInfo["filament"] : loadedPrint.printInfo["filamentType"]},
         {"Filename", loadedPrint.printInfo["filename"]},
         {"Personal Filament", loadedPrint.isPersonalFilament},
-        {"Status", "Ongoing"}
+        {"Status", "Ongoing"},
+        {"Multicolor", countFilaments(loadedPrint.printInfo) > 1}
     };
     if (loadedPrint.staffApproved) printLogInfo.insert("Staff Approver ID", usm->getCurrentStaffId());
-    ait->table("Print Log")->createRecord(printLogInfo);
     Log::write("PrintManager", QString("Starting Print on Printer %1").arg(prm->getPrinter(loadedPrint.printerId)->getName()));
+    QObject::connect(prm, &PrinterManager::printStartResult, this, [this, printLogInfo](bool success){
+        if (success) {
+            Log::write("PrintManager", "Print start succeeded.");
+            ait->table("Print Log")->createRecord(printLogInfo);
+            ftm->showMessage("Printing now!");
+        } else {
+            Log::write("PrintManager", "Print start failed.");
+            ftm->showMessage("Failed to start print.\nPlease try another printer.", "OK");
+        }
+    }, Qt::SingleShotConnection);
     prm->startPrinting(loadedPrint.printerId, loadedPrint.filepath);
-    ftm->showMessage("Printing now!");
 }
 
 void PrintManager::onPrintStatusUpdated(const QString &printerName, const QString &status) const {

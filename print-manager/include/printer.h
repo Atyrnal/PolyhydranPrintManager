@@ -35,6 +35,7 @@ public:
 signals:
     void connectionUpdated(bool status);
     void printStatusUpdated(const QString& name, const QString& status);
+    void printStartResult(bool success);
 protected:
     QString name;
     QString model;

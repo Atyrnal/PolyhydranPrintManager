@@ -113,7 +113,7 @@ void UserManager::onCardScanned(QString cardid) {
                 });
                 break;
             case UserLookup::NotFound:
-                ptm->addPrintIssue("isRegistered", false);
+                ptm->addPrintIssue("Not registered");
                 ftm->showMessage("Your account is not Registered\nPlease Register at the Check-In Kiosk");
                 break;
             default:

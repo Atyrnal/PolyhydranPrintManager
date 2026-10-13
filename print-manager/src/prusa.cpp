@@ -65,6 +65,7 @@ void Prusa::sendGCode(QString filepath) {
     QFileInfo fileInfo(filepath);
     QFile file = QFile(filepath);
     if (!file.open(QIODevice::ReadOnly)) {
+        emit printStartResult(false);
         Error::handle("PrusaPrinterUploadError", "Cannot open file for upload: " + filepath);
         return;
     }
@@ -87,11 +88,13 @@ void Prusa::sendGCode(QString filepath) {
     QObject::connect(uploadReply, &QNetworkReply::finished, uploadReply, [=, this]() {
         //Log if the upload succeeded or failed
         if (uploadReply->error() != QNetworkReply::NoError) {
+            emit printStartResult(false);
             Error::handle("PrusaPrinterUploadError", uploadReply->errorString());
             uploadReply->deleteLater();
             return;
         }
         //QByteArray resp = uploadReply->readAll();
+        emit printStartResult(true);
         Log::write("PrusaPrinter("+name+"@"+hostname+")", "Print upload succeeded");
         uploadReply->deleteLater();
     });

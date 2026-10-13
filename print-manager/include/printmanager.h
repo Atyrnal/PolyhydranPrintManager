@@ -12,7 +12,7 @@ struct LoadedPrint {
     QMap<QString,QString> printInfo;
     QString userID;
     bool isPersonalFilament;
-    QVariantMap issues;
+    QSet<QString> issues;
     bool staffApproved = false;
 };
 
@@ -24,7 +24,7 @@ public:
     PrintManager(QObject* parent = nullptr);
     void printStartCheck(bool isStaff, qint16 printersUsing=0, bool justTrained=false);
     void setPrintUser(QString userid);
-    void addPrintIssue(QString k, QVariant v);
+    void addPrintIssue(QString v);
 
     void setLoadedPrintFilament(bool personal);
 
@@ -34,6 +34,7 @@ public slots:
     void onJobReadyForPrep(quint32 id, const QString &filepath, const QMap<QString, QString> &printInfo);
 private:
     void startLoadedPrint();
+    quint8 countFilaments(QMap<QString, QString> printProperties);
     double parseDuration(const QString &durationString);
     LoadedPrint loadedPrint;
 };
