@@ -50,7 +50,7 @@ void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, boo
         // loadedPrint.issues.insert("personalFilament", loadedPrint.isPersonalFilament);
 
         if (stnbd("requirePrinterUseCount", true) && printersUsing >= stnid("maxSimeltaneousPrinters", 2)) {
-            loadedPrint.issues.insert(QString("Already using %1 printer%2").arg(printersUsing, (printersUsing == 1) ? "" : "s"));
+            loadedPrint.issues.insert(QString("Already using %1 printer%2").arg(QString::number(printersUsing), (printersUsing == 1) ? "" : "s"));
             lmb(QString("You are currently using %1 printer%2\nwhich is the maximum.\nPlease wait for these to finish\nbefore starting another print.").arg(QString::number(printersUsing), (printersUsing == 1) ? "" : "s"),"I Understand") 
         }
         if (stnbd("requireCics", true) && !isCICS) {
