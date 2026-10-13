@@ -30,7 +30,8 @@ ApplicationWindow { //Root app window
         Message,
         Scan,
         Loading,
-        PrinterSelection
+        PrinterSelection,
+        Uploading
     }
 
     enum ScanContext {
@@ -69,6 +70,7 @@ ApplicationWindow { //Root app window
             stateTimeoutTimer.restart()
             break
 
+        case Main.AppState.Uploading:
         case Main.AppState.Idle:
             stateTimeoutTimer.stop()
             break
@@ -216,6 +218,87 @@ ApplicationWindow { //Root app window
 
                 PrinterSelection {
                     id: printerSelectFrame
+                }
+
+                Item {
+                    id: uploadingFrame
+
+                    property double progressPct: 0.50;
+                    property string maxSize : "999.99 TB";
+                    property string curSize : "000.00 B";
+                    property string file : "File_if_you_see_this_there_is_an_issue.gcode.3mf";
+
+                    Connections {
+                        target: frontman
+                        function onUploadProgressUpdated(filename, cur, max, pct) {
+                            uploadingFrame.file = filename;
+                            uploadingFrame.maxSize = max;
+                            uploadingFrame.curSize = cur;
+                            uploadingFrame.progressPct = pct;
+                        }
+                    }
+
+                    Image {
+                        id: spinnyThing2
+                        source: "../resources/progress_activity.svg"
+                        width: 96
+                        height: 96
+                        anchors.centerIn: parent
+                        fillMode: Image.PreserveAspectFit
+
+                        NumberAnimation on rotation {
+                            loops: Animation.Infinite
+                            from: 0
+                            to: 360
+                            duration: 750
+                        }
+                    }
+
+                    Text {
+                        id: uploadText
+                        text: "Uploading \"" + uploadingFrame.file + "\""
+                        font.pointSize: 14
+                        anchors.top: spinnyThing2.bottom
+                        anchors.topMargin: 15
+                        color: Theme.text
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+
+                    Rectangle {
+                        id: progBg
+                        anchors.top: uploadText.bottom
+                        anchors.topMargin: 10
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        border.color: Theme.primary
+                        color: Theme.background
+                        border.width: 2
+                        radius: 5
+                        width: 400
+                        height: 15
+                    }
+
+                    Rectangle {
+                        id: progFg
+                        anchors.top: progBg.top
+                        anchors.left: progBg.left
+                        radius: 5
+                        border.width: 0
+                        color: Theme.primary
+                        height: 15
+                        width: 400 * uploadingFrame.progressPct
+                    }
+
+                    Text {
+                        id: uploadProgTxt
+                        text: uploadingFrame.curSize + " / " + uploadingFrame.maxSize
+                        font.pointSize: 12
+                        color: Theme.text
+                        anchors.top: progBg.bottom
+                        anchors.topMargin: 8
+                        anchors.horizontalCenter: progBg.horizontalCenter
+                    }
+                 
+                    
                 }
             }
             }

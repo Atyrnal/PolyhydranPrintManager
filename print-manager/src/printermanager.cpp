@@ -1,4 +1,5 @@
 #include "printermanager.h"
+#include "frontendmanager.h"
 #include "prusa.h"
 #include "bambulab.h"
 #include "errorhandler.hpp"
@@ -98,6 +99,7 @@ quint32 PrinterManager::addPrinter(Printer* p) {
         }
 
     });
+    connect(p, &Printer::uploadProgressUpdated, ftm, &FrontendManager::setUploadProgress);
     
     if (p->getBrand() == "BambuLab") {
         BambuLab* bblp = dynamic_cast<BambuLab*>(p);

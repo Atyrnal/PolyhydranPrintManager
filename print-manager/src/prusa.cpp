@@ -84,6 +84,12 @@ void Prusa::sendGCode(QString filepath) {
 
     QNetworkReply *uploadReply = manager.put(uploadReq, fileData);
 
+    QObject::connect(uploadReply, &QNetworkReply::uploadProgress, uploadReply, [this, fileInfo](qint64 sent, qint64 total) {
+        if (total <= 0)
+            return;   // total can be -1 or 0 before it's known
+        emit uploadProgressUpdated(fileInfo.fileName(), total, sent);
+    });
+
     //When uploadreply recieved
     QObject::connect(uploadReply, &QNetworkReply::finished, uploadReply, [=, this]() {
         //Log if the upload succeeded or failed

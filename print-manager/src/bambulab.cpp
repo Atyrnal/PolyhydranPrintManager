@@ -17,6 +17,7 @@
 #include <QJsonParseError>
 #include <QHostInfo>
 #include <QCoreApplication>
+#include <qnamespace.h>
 
 
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}
@@ -278,7 +279,13 @@ void BambuLab::requestPrintProject(const BambuPrintOptions &options) {
 void BambuLab::sendGCode(QString filepath) {
     Log::write("BambuLabPrinter("+name+"@"+hostname+")", "SendGCode called");
     QFileInfo fileInfo(filepath);
-    ftps->uploadFile(filepath, hostname, username, accessCode, "/"+fileInfo.fileName());
+    auto con = connect(ftps, &FtpsClient::progress, this, [this, fileInfo](qint64 cur, qint64 total){
+        emit this->uploadProgressUpdated(fileInfo.fileName(), total, cur);
+    });
+    connect(ftps, &FtpsClient::finished, this, [con](){
+        disconnect(con);
+    }, Qt::SingleShotConnection);
+    ftps->uploadFile(filepath, hostname, username, accessCode, fileInfo.fileName());
 }
 
 

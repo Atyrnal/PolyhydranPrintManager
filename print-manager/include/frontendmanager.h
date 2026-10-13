@@ -26,7 +26,9 @@ enum AppState {
     PrepOverride,
     Message,
     Scan,
-    Loading
+    Loading,
+    PrinterSelect,
+    Uploading
 };
 
 class FrontendManager : public QObject {
@@ -47,6 +49,7 @@ signals:
     void printInfoLoaded(const QVariantMap &printInfo);
     void printIssuesLoaded(const QVariantMap &printInfo, const QStringList &printIssues);
     void messageReq(const QString &message, const QString &buttonText, const int &redirectState);
+    void uploadProgressUpdated(const QString& filename, const QString &cur, const QString &max, double pct);
     void setDarkmode(bool dm);
     void closing();
     void raiseRequested();
@@ -55,6 +58,11 @@ public slots:
     Q_INVOKABLE void helpButtonClicked();
     Q_INVOKABLE void fileUploaded(const QUrl &fileUrl);
     Q_INVOKABLE void setLoadedPrintFilamentProvider(bool personal);
+    void setUploadProgress(const QString &filename, qint64 max, qint64 cur);
+private:
+    QString byteString(qint64 bytes) const;
 };
+
+
 
 #endif

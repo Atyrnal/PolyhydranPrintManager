@@ -36,6 +36,7 @@ signals:
     void connectionUpdated(bool status);
     void printStatusUpdated(const QString& name, const QString& status);
     void printStartResult(bool success);
+    void uploadProgressUpdated(const QString& filename, qint64 max, qint64 cur);
 protected:
     QString name;
     QString model;

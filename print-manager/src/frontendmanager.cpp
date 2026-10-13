@@ -99,6 +99,8 @@ Q_INVOKABLE void FrontendManager::helpButtonClicked() {
 
 Q_INVOKABLE void FrontendManager::setLoadedPrintFilamentProvider(bool personal) {
     ptm->setLoadedPrintFilament(personal);
+    //Hackey but its only for debug so whatevs
+    if (stnsd("bypassCardId", "") != "") usm->onCardScanned(stns("bypassCardId"));
 }
 
 
@@ -125,4 +127,34 @@ void FrontendManager::showPrintOverridePrep() {
     propertiesForJS.insert("jobstatus", (prm->getPrinter(lp.printerId) != nullptr) ? prm->getPrinter(lp.printerId)->getJobStatus() : Printer::JobStatus::Error);
     emit printIssuesLoaded(propertiesForJS, lp.issues.values());
     setAppState(AppState::PrepOverride);
+}
+
+void FrontendManager::setUploadProgress(const QString &filename, qint64 max, qint64 cur) {
+    
+    emit uploadProgressUpdated(filename, byteString(cur), byteString(max), static_cast<double>(cur)/static_cast<double>(max));
+    if (getAppState() == AppState::Loading) setAppState(AppState::Uploading);
+}
+
+QString FrontendManager::byteString(qint64 bytes) const {
+    double newBytes = bytes;
+    quint8 mag3 = 0;
+    while (newBytes / 1000 >= 1) {
+        newBytes /= 1000;
+        mag3++;
+    }
+    QString s = QString::number(newBytes, 'f', 2);
+    switch (mag3) {
+        case 0:
+            return s + " B";
+        case 1:
+            return s + " KB";
+        case 2:
+            return s + " MB";
+        case 3:
+            return s + " GB";
+        case 4:
+            return s + " TB";
+        default:
+            return "Yo you should not be uploading this much fatass";
+    }
 }

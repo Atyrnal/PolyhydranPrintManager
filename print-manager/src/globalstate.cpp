@@ -1,4 +1,5 @@
 #include "globalstate.hpp"
+#include "frontendmanager.h"
 #include "rfidmanager.h"
 #ifdef Q_OS_WIN
 #include "windowsinterface.h"
@@ -7,6 +8,7 @@
 #include "linuxinterface.h"
 #endif
 #include <QCoreApplication>
+#include <QTimer>
 
 GlobalState& GlobalState::instance() {
     static GlobalState instanced;
@@ -138,4 +140,12 @@ void GlobalState::loadConfig(QJsonObject cfg) {
     
     printerman->loadConfig(cfg);
     rfidman->startRfid();
+
+    //Debug triggers
+    // frontman->setAppState(AppState::Loading);
+    // emit frontman->setUploadProgress("test.gcode", 5011340, 123456);
+
+    // QTimer::singleShot(6000, this, [this](){
+    //     frontman->setUploadProgress("test.gcode", 5011340, 4567000);
+    // });
 }
