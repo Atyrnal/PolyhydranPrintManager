@@ -1,5 +1,6 @@
 // ftpsclient.cpp
 #include "ftpsclient.h"
+#include <QUrl>
 
 FtpsClient::FtpsClient(QObject *parent) : QObject(parent) {
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -62,7 +63,9 @@ void FtpsWorker::doUpload(const QString &localFile, const QString &host,
         return;
     }
 
-    QString url = QString("ftps://%1:990/%2").arg(host, remotePath);
+    QByteArray encodedPath = QUrl::toPercentEncoding(remotePath, "/");
+
+    QString url = QString("ftps://%1:990/%2").arg(host, QString::fromLatin1(encodedPath));
 
     curl_easy_setopt(m_curl, CURLOPT_URL, url.toUtf8().constData());
     curl_easy_setopt(m_curl, CURLOPT_USERNAME, username.toUtf8().constData());
