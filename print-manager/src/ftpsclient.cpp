@@ -76,6 +76,7 @@ void FtpsWorker::doUpload(const QString &localFile, const QString &host,
     curl_easy_setopt(m_curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(m_curl, CURLOPT_UPLOAD, 1L);
     curl_easy_setopt(m_curl, CURLOPT_READDATA, &file);
+    curl_easy_setopt(m_curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)file.size()); //Tell CURL the file size
     curl_easy_setopt(m_curl, CURLOPT_READFUNCTION, &FtpsWorker::readCallback);
     curl_easy_setopt(m_curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(m_curl, CURLOPT_XFERINFOFUNCTION, &FtpsWorker::progressCallback);
