@@ -110,7 +110,7 @@ void PrintManager::startLoadedPrint() {
         {"Status", "Ongoing"},
         {"Multicolor", countFilaments(loadedPrint.printInfo) > 1}
     };
-    if (loadedPrint.staffApproved) printLogInfo.insert("Staff Approver ID", usm->getCurrentStaffId());
+    if (loadedPrint.staffApproved && usm->getCurrentUserId() != usm->getCurrentStaffId()) printLogInfo.insert("Staff Approver ID", usm->getCurrentStaffId());
     Log::write("PrintManager", QString("Starting Print on Printer %1").arg(prm->getPrinter(loadedPrint.printerId)->getName()));
     QObject::connect(prm, &PrinterManager::printStartResult, this, [this, printLogInfo](bool success){
         if (success) {
