@@ -30,8 +30,9 @@ Prusa::Prusa(QString name, QString model, QString hostname, QString apiKey, QStr
     this->storageType = storageType;
     testConnection();
     QTimer *timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, [this](){
-        if (connectedOnce) testConnection();
+    connect(timer, &QTimer::timeout, this, [this, timer](){
+        if (connectedOnce || connectFailCount < 10) testConnection();
+        if (!connectedOnce && connectFailCount >= 10) timer->stop();
     });
     timer->start(30000);
 }
@@ -120,7 +121,7 @@ void Prusa::testConnection() {
             if (connectionStatus && ++connectFailCount >= stnid("prusaConnectionFailThreshold", 2)) {
                 emit this->connectionUpdated(false);
                 Log::write("PrusaPrinter("+name+"@"+hostname+")", "Disconnected from printer");
-            } else if (!connectedOnce) {
+            } else if (!connectedOnce && ++connectFailCount <= 1) {
                 emit this->connectionUpdated(false);
                 Error::handle("PrusaPrinterConnectionTestError", "Unable to connect to printer " + name, El::Warning);
             }
