@@ -42,7 +42,7 @@
 #define gsi GlobalState::instance()
 
 
-#define APP_VERSION "0.1.0-beta3"
+#define APP_VERSION "0.1.0-beta4"
 
 class GlobalState : public QObject {
     Q_OBJECT

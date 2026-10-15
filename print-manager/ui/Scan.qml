@@ -4,7 +4,7 @@ Item { //scanFrame container
     property bool isStaff : false
     Image {
         id: ltx2a
-        source: "../resources/ltx2a_ledoff.svg" //image source relative to Main.qml (image files must be explicitly included in CMakeLists.txt)
+        source: "../resources/part_ltx2a.svg" //image source relative to Main.qml (image files must be explicitly included in CMakeLists.txt)
         height: 300
         fillMode: Image.PreserveAspectFit
         anchors.left: parent.left
@@ -15,38 +15,39 @@ Item { //scanFrame container
 
     Image {
         id: card
-        source: "../resources/card_filled.svg"
+        source: "../resources/part_card_filled.svg"
         height: 150
         fillMode: Image.PreserveAspectFit
         anchors.right: parent.right
         anchors.rightMargin: 150 + 235*offset
         anchors.top: parent.top
-        anchors.topMargin: 260
+        anchors.topMargin: 190
         property real offset
+        property real offsetMax: 1.12
 
         SequentialAnimation on offset { //Animate the card moving and LTx2A lighting up
             loops: Animation.Infinite
             NumberAnimation { //Animate the offset (and therefore the horizontal position of card)
                 from: 0;
-                to: 1;
+                to: card.offsetMax;
                 duration: 1000;
                 easing.type: Easing.InOutCubic;
                 easing.amplitude: 1;
                 easing.period: 1.0;
             }
-            ScriptAction {
-                script: ltx2a.source = "../resources/ltx2a_ledon.svg" //Change image of LTx2A
-            }
+            // ScriptAction {
+            //     script: ltx2a.source = "../resources/ltx2a_ledon.svg" //Change image of LTx2A
+            // }
             NumberAnimation { //Do nothing for 1 seconds
-                from: 1;
-                to : 1;
+                from: card.offsetMax;
+                to : card.offsetMax;
                 duration: 1000;
             }
-            ScriptAction {
-                script: ltx2a.source = "../resources/ltx2a_ledoff.svg"
-            }
+            // ScriptAction {
+            //     script: ltx2a.source = "../resources/ltx2a_ledoff.svg"
+            // }
             NumberAnimation { //Animate card back to starting pos
-                from: 1;
+                from: card.offsetMax;
                 to: 0;
                 duration: 1000;
                 easing.type: Easing.InOutCubic
