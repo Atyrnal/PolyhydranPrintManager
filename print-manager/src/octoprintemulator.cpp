@@ -12,6 +12,9 @@
 #include <QFile>
 #include <QDir>
 #include <QHttpServerResponse>
+#if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0)
+#include <QHttpServerConfiguration>
+#endif
 #include "gcodeparser.h"
 #include "globalstate.hpp"
 
@@ -249,6 +252,14 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
 
 
     QTcpServer* tcp = new QTcpServer(this); // create TCP server
+
+    //Since 6.11 there is a limit on body size for httpserver that defaults to 32MiB. 
+    #if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0)
+    QHttpServerConfiguration config;
+    config.setMaximumBodySize(stnld("maxUploadSizeMB", 110)*1024*1024);
+    server.setConfiguration(config);
+    #endif
+
     if (!tcp->listen(QHostAddress::LocalHost, port)) { // start listening
         Error::handle("OctoprintEmulator", "Failed to start TCP server on port " + QString(port), El::Critical);
         return;

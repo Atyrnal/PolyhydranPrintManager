@@ -28,6 +28,8 @@
 #define stnuid(sname, def) GlobalState::instance().getSetting((sname), (def)).toUInt()
 #define stni(sname) GlobalState::instance().getSetting((sname), 0).toInt();
 #define stnid(sname, def) GlobalState::instance().getSetting((sname), (def)).toInt()
+#define stnl(sname) GlobalState::instance().getSetting((sname), 0).toLongLong()
+#define stnld(sname, def) GlobalState::instance().getSetting((sname), (def)).toLongLong()
 
 //manager macros
 #define ftm GlobalState::instance().getFrontendManager()
