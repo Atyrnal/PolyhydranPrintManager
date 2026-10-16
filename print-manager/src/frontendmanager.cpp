@@ -100,7 +100,7 @@ Q_INVOKABLE void FrontendManager::helpButtonClicked() {
 Q_INVOKABLE void FrontendManager::setLoadedPrintFilamentProvider(bool personal) {
     ptm->setLoadedPrintFilament(personal);
     //Hackey but its only for debug so whatevs
-    if (stnsd("bypassCardId", "") != "") usm->onCardScanned(stns("bypassCardId"));
+    if (stns("bypassCardId") != "") usm->onCardScanned(stns("bypassCardId"));
 }
 
 

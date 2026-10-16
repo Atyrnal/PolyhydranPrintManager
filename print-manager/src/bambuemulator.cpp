@@ -41,7 +41,7 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     } else {
         Check::write("Config file mosq.conf generated", Cl::OK);
     }
-    QString caPath = (stnsd("mosqCaCertFile","ca.crt").startsWith("/")) ? stnsd("mosqCaCertFile","ca.crt") : gsi.getDataDirPath() + '/' + stnsd("mosqCaCertFile","ca.crt");
+    QString caPath = (stns("mosqCaCertFile").startsWith("/")) ? stns("mosqCaCertFile") : gsi.getDataDirPath() + '/' + stns("mosqCaCertFile");
     if (!QFile::exists(caPath)) {
         Check::write("Config file ca cert exists", Cl::FAIL);
         Error::buffer("ConfigError", QString("Missing ca cert certificate file %1").arg(caPath), El::Critical);
@@ -49,7 +49,7 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     } else {
         Check::write("Config file ca cert exists", Cl::OK);
     }
-    QString srvPath = (stnsd("mosqServerCertFile","server.crt").startsWith("/")) ? stnsd("mosqServerCertFile","server.crt") : gsi.getDataDirPath() + '/' + stnsd("mosqServerCertFile","server.crt");
+    QString srvPath = (stns("mosqServerCertFile").startsWith("/")) ? stns("mosqServerCertFile") : gsi.getDataDirPath() + '/' + stns("mosqServerCertFile");
     if (!QFile::exists(srvPath)) {
         Check::write("Config file server cert exists", Cl::FAIL);
         Error::buffer("ConfigError", QString("Missing server cert certificate file %1").arg(srvPath), El::Critical);
@@ -57,7 +57,7 @@ bool BambuEmulator::setupCheck(quint8 printerCount) {
     } else {
         Check::write("Config file server cert exists", Cl::OK);
     }
-    QString pkPath = (stnsd("mosqServerKeyFile","server.key").startsWith("/")) ? stnsd("mosqServerKeyFile","server.key") : gsi.getDataDirPath() + '/' + stnsd("mosqServerKeyFile","server.key");
+    QString pkPath = (stns("mosqServerKeyFile").startsWith("/")) ? stns("mosqServerKeyFile") : gsi.getDataDirPath() + '/' + stns("mosqServerKeyFile");
     if (!QFile::exists(pkPath)) {
         Check::write("Config file server private key exists", Cl::FAIL);
         Error::buffer("ConfigError", "Missing server private key file " + pkPath, El::Critical);
@@ -181,9 +181,9 @@ bool BambuEmulator::genMosquittoConfig(QString path, quint8 printerCount) {
     for (quint8 i = 0U; i < printerCount+1; i++) {
         out << QString("listener 8883 127.0.0.%1\n").arg(i+1);
         out << "protocol mqtt\n";
-        out << QString("cafile %1\n").arg(stnsd("mosqCaCertFile", "ca.crt"));
-        out << QString("certfile %1\n").arg(stnsd("mosqServerCertFile", "server.crt"));
-        out << QString("keyfile %1\n").arg(stnsd("mosqServerKeyFile", "server.key"));
+        out << QString("cafile %1\n").arg(stns("mosqCaCertFile"));
+        out << QString("certfile %1\n").arg(stns("mosqServerCertFile"));
+        out << QString("keyfile %1\n").arg(stns("mosqServerKeyFile"));
         out << "require_certificate false\n\n";
     }
 

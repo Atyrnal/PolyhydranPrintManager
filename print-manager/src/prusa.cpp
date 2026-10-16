@@ -118,7 +118,7 @@ void Prusa::testConnection() {
     QObject::connect(testReply, &QNetworkReply::finished, this, [this, testReply]() {
         if (testReply->error() != QNetworkReply::NoError) {
             if (testReply->error() >= 100 && testReply->error()) Error::softHandle("PrusaPrinterConnectionTestError", testReply->errorString() + " " + QString::number(testReply->error()));
-            if (connectionStatus && ++connectFailCount >= stnid("prusaConnectionFailThreshold", 2)) {
+            if (connectionStatus && ++connectFailCount >= stni("prusaConnectionFailThreshold")) {
                 emit this->connectionUpdated(false);
                 Log::write("PrusaPrinter("+name+"@"+hostname+")", "Disconnected from printer");
             } else if (!connectedOnce && ++connectFailCount <= 1) {
@@ -175,7 +175,7 @@ void Prusa::testConnection() {
     });
     // QTimer::singleShot(5000, this, [this, testReply](){
     //     if (!testReply->isFinished()) {
-    //         if (connectionStatus && ++connectFailCount >= stnid("prusaConnectionFailThreshold", 2)) {
+    //         if (connectionStatus && ++connectFailCount >= stni("prusaConnectionFailThreshold", 2)) {
     //             emit this->connectionUpdated(false);
     //             Log::write("PrusaPrinter("+name+"@"+hostname+")", "Disconnected from printer (timed out)");
     //         } else if (!connectedOnce) {

@@ -45,7 +45,13 @@ QString GlobalState::getAppVersion() const {
 }
 
 QVariant GlobalState::getSetting(QString sname, QVariant def) const {
-    return settings.value(sname, def);
+    if (settings.contains(sname)) return settings.value(sname);
+    else if (!def.isNull() && def.isValid()) return def;
+    else if (defaultSettings.contains(sname)) return defaultSettings.value(sname);
+    else {
+        Error::handle("ConfigError", "Invalid setting name: " + sname, El::Warning);
+        return def;
+    }
 }
 
 void GlobalState::loadSettings(QMap<QString, QVariant> setc) {
@@ -134,6 +140,9 @@ void GlobalState::loadConfig(QJsonObject cfg) {
         loadSettings(settings);
     }
 
+    userman->loadGroupOverrides();
+
+    if (config.contains("customGroups") && config.value("customGroups").isObject()) userman->loadCustomGroups(config.value("customGroups").toObject());
 
     //Load specific settings
     emit frontman->setDarkmode(stnb("darkMode"));

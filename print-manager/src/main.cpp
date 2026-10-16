@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
     if (uploadDir.exists() && !uploadDir.removeRecursively()) Error::handle("ConfigError", "Failed to wipe uploaded directory", El::Warning);
     if (!uploadDir.mkpath(".")) Error::handle("ConfigError", "Failed to create uploaded directory", El::Critical);
 
-    if (stnbd("gcodeParsingDebug", false)) { //For storing gcode files that don't parse correctly
+    if (stnb("gcodeParsingDebug")) { //For storing gcode files that don't parse correctly
         QDir debugDir = QDir(gsi.getDataDirPath()+"/debug");
         if (!debugDir.exists()) {
             debugDir.mkpath(".");

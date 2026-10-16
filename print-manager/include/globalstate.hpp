@@ -18,17 +18,17 @@
 #include "osinterface.h"
 
 //Settings macros
-#define stnb(sname) GlobalState::instance().getSetting((sname), false).toBool()
+#define stnb(sname) GlobalState::instance().getSetting((sname)).toBool()
 #define stnbd(sname, def) GlobalState::instance().getSetting((sname), (def)).toBool()
-#define stns(sname) GlobalState::instance().getSetting((sname), "").toString()
+#define stns(sname) GlobalState::instance().getSetting((sname)).toString()
 #define stnsd(sname, def) GlobalState::instance().getSetting((sname), (def)).toString()
-#define stnd(sname) GlobalState::instance().getSetting((sname), 0.0).toDouble()
+#define stnd(sname) GlobalState::instance().getSetting((sname)).toDouble()
 #define stndd(sname, def) GlobalState::instance().getSetting((sname), (def)).toDouble()
-#define stnui(sname) GlobalState::instance().getSetting((sname), 0).toUInt();
+#define stnui(sname) GlobalState::instance().getSetting((sname)).toUInt()
 #define stnuid(sname, def) GlobalState::instance().getSetting((sname), (def)).toUInt()
-#define stni(sname) GlobalState::instance().getSetting((sname), 0).toInt();
+#define stni(sname) GlobalState::instance().getSetting((sname)).toInt()
 #define stnid(sname, def) GlobalState::instance().getSetting((sname), (def)).toInt()
-#define stnl(sname) GlobalState::instance().getSetting((sname), 0).toLongLong()
+#define stnl(sname) GlobalState::instance().getSetting((sname)).toLongLong()
 #define stnld(sname, def) GlobalState::instance().getSetting((sname), (def)).toLongLong()
 
 //manager macros
@@ -56,7 +56,7 @@ public:
     GlobalState(GlobalState&&) = delete;
     GlobalState& operator=(GlobalState&&) = delete;
 
-    QVariant getSetting(QString sname, QVariant def) const;
+    QVariant getSetting(QString sname, QVariant def = QVariant()) const;
     void loadSettings(QMap<QString, QVariant> setc);
 
     QString getAppVersion() const;
@@ -81,7 +81,7 @@ public:
     void setRoot(QObject* root);
 
     void loadConfig(QJsonObject cfg);
-
+    
 private:
     explicit GlobalState(QObject *parent = nullptr);
     ~GlobalState();
@@ -97,6 +97,42 @@ private:
 
     //Storage
     QMap<QString, QVariant> settings;
+    const QMap<QString, QVariant> defaultSettings {
+        {"allowPrinting", true},
+        {"allowMakerspaceFilament", true},
+        {"allowPersonalFilament", true},
+        {"bypassCardId", ""},
+        {"darkMode", false},
+        {"enableGroups", false},
+        {"gcodeParsingDebug", false},
+        {"groupTableName", "Groups"},
+        {"maxFilamentTypeCount", 2},
+        {"maxInfillDensity", 0.4},
+        {"maxPrintDuration", 6.0},
+        {"maxPrintDurationPersonalFilament", 6.0},
+        {"maxPrintWeight", 200.0},
+        {"maxSimeltaneousPrinters", 2},
+        {"maxUploadSizeMB", 110},
+        {"minLayerHeight", 0.1},
+        {"mosqCaCertFile", "ca.crt"},
+        {"mosqServerCertFile", "server.crt"},
+        {"mosqServerKeyFile", "server.key"},
+        {"mosquittoExec", "/usr/sbin/mosquitto"},
+        {"orcaSlicerExec", "/opt/orca-slicer/AppRun"},
+        {"orcaSlicerDir", "/opt/orca-slicer/"},
+        {"printingCertificateName", "3D Printing"},
+        {"printingCertificateTableName", "Certificates"},
+        {"prusaConnectionFailThreshold", 2},
+        {"requireFilamentTypeCount", true},
+        {"requireInfillDensity", true},
+        {"requireLayerHeight", true},
+        {"requirePrintDuration", true},
+        {"requirePrintWeight", true},
+        {"requirePrinterUseCount", true},
+        {"requireTraining", true},
+        {"rfidReaderPortName", "auto"},
+        {"updatePrintStatuses", true}
+    };
     QString dataDirPath;
     QString appDirPath;
     QCoreApplication* app = nullptr;

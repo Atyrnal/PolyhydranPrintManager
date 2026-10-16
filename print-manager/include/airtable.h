@@ -48,6 +48,10 @@ public:
     void getRecord(QString filterFormula, QList<Sort> sorts, Func callback);//QVariantMap
     template<typename Func>
     void getRecords(QString filterFormula, QList<Sort> sorts, Func callback); //QList<QVariantMap>
+    template<typename Func>
+    void getRecords(QList<Sort> sorts, Func callback); //QList<QVariantMap>
+    template<typename Func>
+    void getRecords(Func callback); //QList<QVariantMap>
     void createRecord(QVariantMap recordFields);
     void updateRecord(QString filterFormula, QList<Sort> sorts, QVariantMap recordFields);
     void updateRecordById(QString recordId, QVariantMap recordFields);
@@ -163,6 +167,85 @@ void AirtableTable::getRecords(QString filterFormula, QList<Sort> sorts, Func ca
     });
 }
 
+
+template<typename Func>
+void AirtableTable::getRecords(QList<Sort> sorts, Func callback) {
+    using eop = Eo<QList<QVariantMap>>;
+    QString formulaUrl = QString("%1/v0/%2/%3").arg(dbHostname, dbBase, dbTable);
+    QString sortUrl = "?";
+    for (quint32 i = 0; i < sorts.size(); i++) {
+        sortUrl += QString("sort[%1][field]=%2&sort[%1][direction]=%4&").arg(i).arg(sorts.at(i).field, (sorts.at(i).direction) ? "desc" : "asc");
+    }
+    sortUrl.chop(1); //remove the last &.
+    QNetworkReply* reply = getRaw(formulaUrl + sortUrl);
+    QObject::connect(reply, &QNetworkReply::finished, reply, [=]() {
+        if(reply->error() != QNetworkReply::NoError) {
+            callback(eop("AirtableNetworkError", reply->errorString(), El::Warning));
+            return;
+        }
+        QJsonParseError p;
+        QJsonDocument responseDoc = QJsonDocument::fromJson(reply->readAll(), &p);
+        if (p.error) {
+            callback(eop("AirtableResponseError", "Unable to parse response as json: " + p.errorString(), El::Warning));
+            return;
+        } else if (!responseDoc.isObject()) {
+            callback(eop("AirtableResponseError", "Response is not JSON object", El::Warning));
+            return;
+        }
+        QJsonObject response = responseDoc.object();
+        if (!response.contains("records") || !response.value("records").isArray()) {
+            callback(eop("AirtableResponseError", "Response does not match expected scheme", El::Warning));
+            return;
+        }
+        QJsonArray records = response.value("records").toArray();
+        QList<QVariantMap> recordList;
+        for (auto i = records.cbegin(); i != records.cend(); i++) {
+            if ((*i).isObject()) {
+                QJsonObject rec = (*i).toObject();
+                if (rec.contains("createdTime") && rec.contains("fields") && rec.contains("id") && rec.value("createdTime").isString() && rec.value("fields").isObject() && rec.value("id").isString()) recordList.append((*i).toObject().toVariantMap());
+            }
+        }
+        callback(eop(recordList));
+        reply->deleteLater();
+    });
+}
+
+template<typename Func>
+void AirtableTable::getRecords(Func callback) {
+    using eop = Eo<QList<QVariantMap>>;
+    QString formulaUrl = QString("%1/v0/%2/%3").arg(dbHostname, dbBase, dbTable);
+    QNetworkReply* reply = getRaw(formulaUrl);
+    QObject::connect(reply, &QNetworkReply::finished, reply, [=]() {
+        if(reply->error() != QNetworkReply::NoError) {
+            callback(eop("AirtableNetworkError", reply->errorString(), El::Warning));
+            return;
+        }
+        QJsonParseError p;
+        QJsonDocument responseDoc = QJsonDocument::fromJson(reply->readAll(), &p);
+        if (p.error) {
+            callback(eop("AirtableResponseError", "Unable to parse response as json: " + p.errorString(), El::Warning));
+            return;
+        } else if (!responseDoc.isObject()) {
+            callback(eop("AirtableResponseError", "Response is not JSON object", El::Warning));
+            return;
+        }
+        QJsonObject response = responseDoc.object();
+        if (!response.contains("records") || !response.value("records").isArray()) {
+            callback(eop("AirtableResponseError", "Response does not match expected scheme", El::Warning));
+            return;
+        }
+        QJsonArray records = response.value("records").toArray();
+        QList<QVariantMap> recordList;
+        for (auto i = records.cbegin(); i != records.cend(); i++) {
+            if ((*i).isObject()) {
+                QJsonObject rec = (*i).toObject();
+                if (rec.contains("createdTime") && rec.contains("fields") && rec.contains("id") && rec.value("createdTime").isString() && rec.value("fields").isObject() && rec.value("id").isString()) recordList.append((*i).toObject().toVariantMap());
+            }
+        }
+        callback(eop(recordList));
+        reply->deleteLater();
+    });
+}
 
 
 

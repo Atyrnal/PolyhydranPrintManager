@@ -256,7 +256,7 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
     //Since 6.11 there is a limit on body size for httpserver that defaults to 32MiB. 
     #if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0)
     QHttpServerConfiguration config;
-    config.setMaximumBodySize(stnld("maxUploadSizeMB", 110)*1024*1024);
+    config.setMaximumBodySize(stnl("maxUploadSizeMB")*1024*1024);
     server.setConfiguration(config);
     #endif
 
