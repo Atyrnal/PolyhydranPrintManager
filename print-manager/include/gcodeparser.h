@@ -29,16 +29,19 @@ public:
     static Eo<QMap<QString, QString>> parseFile(QString filepath);
     static Eo<QMap<QString, QString>> parse3mfFile(QString filepath, quint16 platenum);
 private:
-    static const int LINE_COUNT = 600;
-    static const int BLINE_COUNT = 100;
     static inline const std::vector<QString> GCODE_TARGETS = std::vector<QString>({"total filament used [g]", "filament_type", "printer_settings_id", "estimated printing time (normal mode)", "filament_settings_id", "print_settings_id", "filament used [g]", "sparse_infill_density", "layer_height"});
     static inline const std::vector<QString> BGCODE_TARGETS = std::vector<QString>({"filament used [g]", "filament_type", "printer_model", "estimated printing time (normal mode)", "fill_density", "layer_height"});
-    static QVector<QString> readGCode(QFile file);
-    static QVector<QString> readGCode(QByteArray raw);
-    static QVector<QString> readBGCode(QFile file);
-    static QMap<QString, QString> parseGCode(QVector<QString> lines);
-    static QMap<QString, QString> parseBGCode(QVector<QString> lines);
-    static QMap<QString, QByteArray> extractGCode3mf(const QString &filepath);
+    static QMap<QString, QString> streamParseGCode(const QString &filepath);
+    static QMap<QString, QString> streamParseGCode(const QByteArray &raw);
+    static QMap<QString, QString> streamParseBGCode(const QString &filepath);
+    static QMap<QString, QString> scanGCode(QIODevice &dev);           // shared core for file + buffer
+    static QMap<QString, QString> formatGCode(QMap<QString, QString> properties);
+    static QMap<QString, QString> formatBGCode(QMap<QString, QString> properties);
+    static void parseGCodeLine(QMap<QString, QString> &properties, const QString &line);
+    static void parseBGCodeLine(QMap<QString, QString> &properties, const QString &line);
+    static bool gcodeComplete(const QMap<QString, QString> &p);
+    static bool bgcodeComplete(const QMap<QString, QString> &p);
+    static QPair<bool, QByteArray> extractGCode3mfPlate(const QString &filepath, quint16 platenum, bool fallbackToFirst = false);
 };
 
 #endif // GCODEPARSER_H
