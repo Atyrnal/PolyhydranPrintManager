@@ -17,7 +17,6 @@
 #include <QJsonParseError>
 #include <QHostInfo>
 #include <QCoreApplication>
-#include <qnamespace.h>
 
 
 BambuLab::BambuLab(QObject* parent) : Printer(parent), mqtt() {}

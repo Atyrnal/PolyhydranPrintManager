@@ -1,7 +1,7 @@
 #include "printmanager.h"
 #include "frontendmanager.h"
 #include "globalstate.hpp"
-#include <qobject.h>
+#include <QObject>
 
 #define gusb(name) usm->getUserSetting((name), overrides).toBool()
 #define guss(name) usm->getUserSetting((name), overrides).toString()

@@ -10,7 +10,7 @@
 #include "errorhandler.hpp"
 #include <QTimer>
 #include <QSslKey>
-#include <gcodeparser.h>
+#include "gcodeparser.h"
 #include "globalstate.hpp"
 #ifndef Q_OS_WIN
 #include <QStandardPaths>

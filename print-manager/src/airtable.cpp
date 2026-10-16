@@ -4,10 +4,9 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QJsonArray>
-#include <qjsonobject.h>
-#include <qnetworkreply.h>
-#include <qobject.h>
-#include <qstringview.h>
+#include <QJsonObject>
+#include <QNetworkReply>
+#include <QObject>
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonParseError>

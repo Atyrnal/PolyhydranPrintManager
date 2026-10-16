@@ -1,7 +1,6 @@
 #include "usermanager.h"
 #include "globalstate.hpp"
-#include <qcontainerfwd.h>
-#include <qjsonobject.h>
+#include <QJsonObject>
 
 
 UserManager::UserManager(QObject* parent) : QObject(parent) {}
