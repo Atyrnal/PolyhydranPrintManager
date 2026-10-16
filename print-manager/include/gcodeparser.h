@@ -31,8 +31,8 @@ public:
 private:
     static const int LINE_COUNT = 600;
     static const int BLINE_COUNT = 100;
-    static inline const std::vector<QString> GCODE_TARGETS = std::vector<QString>({"total filament used [g]", "filament_type", "printer_settings_id", "estimated printing time (normal mode)", "filament_settings_id", "print_settings_id", "filament used [g]"});
-    static inline const std::vector<QString> BGCODE_TARGETS = std::vector<QString>({"filament used [g]", "filament_type", "printer_model", "estimated printing time (normal mode)"});
+    static inline const std::vector<QString> GCODE_TARGETS = std::vector<QString>({"total filament used [g]", "filament_type", "printer_settings_id", "estimated printing time (normal mode)", "filament_settings_id", "print_settings_id", "filament used [g]", "sparse_infill_density", "layer_height"});
+    static inline const std::vector<QString> BGCODE_TARGETS = std::vector<QString>({"filament used [g]", "filament_type", "printer_model", "estimated printing time (normal mode)", "fill_density", "layer_height"});
     static QVector<QString> readGCode(QFile file);
     static QVector<QString> readGCode(QByteArray raw);
     static QVector<QString> readBGCode(QFile file);

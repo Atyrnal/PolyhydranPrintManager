@@ -36,6 +36,9 @@ private:
     void startLoadedPrint();
     quint8 countFilaments(QMap<QString, QString> printProperties);
     double parseDuration(const QString &durationString);
+    double parseInfill(const QString &infillString);
+    double parseLayerHeight(const QString &layerString);
+    double parseWeight(QMap<QString, QString> printProperties);
     LoadedPrint loadedPrint;
 };
 

@@ -82,6 +82,13 @@ int main(int argc, char *argv[])
     if (uploadDir.exists() && !uploadDir.removeRecursively()) Error::handle("ConfigError", "Failed to wipe uploaded directory", El::Warning);
     if (!uploadDir.mkpath(".")) Error::handle("ConfigError", "Failed to create uploaded directory", El::Critical);
 
+    if (stnbd("gcodeParsingDebug", false)) { //For storing gcode files that don't parse correctly
+        QDir debugDir = QDir(gsi.getDataDirPath()+"/debug");
+        if (!debugDir.exists()) {
+            debugDir.mkpath(".");
+        }
+    }
+
     gsi.setApp(&app);
     gsi.setEngine(&engine);
     engine.loadFromModule("PolyhydranPrintManager", "Main"); //Load the QML Main.qml declarative ui file

@@ -31,6 +31,9 @@ void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, boo
     ftm->setAppState(AppState::Loading);
     double printDuration = parseDuration(loadedPrint.printInfo["duration"]);
     qint8 filamentTypeCount = countFilaments(loadedPrint.printInfo);
+    double infillDensity = parseInfill(loadedPrint.printInfo["infillDensity"]);
+    double layerHeight = parseLayerHeight(loadedPrint.printInfo["layerHeight"]);
+    double weight = parseWeight(loadedPrint.printInfo);
     if (!staffApproved) {
         bool ok = true;
         QString message = "";
@@ -81,13 +84,51 @@ void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, boo
         }
         if (stnbd("requireFilamentTypeCount", false) && filamentTypeCount > stnid("maxFilamentTypeCount", 2)) {
             loadedPrint.issues.insert(QString("More than %1 filament type%2 (%3)").arg(QString::number(stnid("maxFilamentTypeCount", 2)), (filamentTypeCount == 1) ? "" : "s", QString::number(filamentTypeCount)));
-            lm(QString("Prints cannot have more than %1\n filament type%2/color%2 without\nstaff approval.").arg(QString::number(stnid("maxFilamentTypeCount", 2)), (filamentTypeCount == 1) ? "" : "s"));
+            lm(QString("Prints cannot have more than %1\n filament type%2/color%2 without\nstaff approval.").arg(QString::number(stnid("maxFilamentTypeCount", 2)), (filamentTypeCount == 1) ? "" : "s"))
+        }
+        //Weight, infill and layer height
+        if (stnbd("requirePrintWeight", true) && weight > stndd("maxPrintWeight", 300.0)) {
+            loadedPrint.issues.insert(QString("Weight exceeding %1g").arg(QString::number(stndd("maxPrintWeight", 300.0))));
+            lm(QString("Prints cannot have a filament usage\n greater than %1g\n without staff approval.").arg(QString::number(stndd("maxPrintWeight", 300.0))))
         }
 
+        if (stnbd("requireInfillDensity", false) && infillDensity > stndd("maxInfillDensity", 0.4)) {
+            loadedPrint.issues.insert(QString("Infill density exceeding %1%").arg(QString::number(stndd("maxInfillDensity", 0.4)*100)));
+            lm(QString("Prints cannot have an infill density\n greater than %1%\n without staff approval.").arg(QString::number(stndd("maxInfillDensity", 0.4)*100)))
+        }
+        //Log::write("PrintManager", QString("req: %1, val: %2, min: %3, truth: %4, 0: %5").arg(stnbd("requireLayerHeight", false)).arg(layerHeight).arg(stndd("minLayerHeight", 0.1)).arg(layerHeight < stndd("minLayerHeight", 0.1)).arg(layerHeight != 0.0));
+        if (stnbd("requireLayerHeight", false) && layerHeight < stndd("minLayerHeight", 0.1) && layerHeight != 0.0) {
+            loadedPrint.issues.insert(QString("Layer height less than %1mm").arg(QString::number(stndd("minLayerHeight", 0.1))));
+            lm(QString("Prints cannot have a layer height\n less than %1mm\n without staff approval.").arg(QString::number(stndd("minLayerHeight", 0.1))))
+        }
         if (!ok) return ftm->showMessage(message, button, s);
     } else {
         loadedPrint.staffApproved = true;
     }
+
+    //Debug stuff
+
+    if (printDuration == 0 || filamentTypeCount == 0 || infillDensity == 0 || layerHeight == 0 || weight == 0) { //issue with gcode parsing
+
+        quint8 bitmask = ((((((((printDuration == 0) << 1 ) + (filamentTypeCount == 0)) << 1) + (infillDensity == 0)) << 1) + (layerHeight == 0)) << 1) + (weight == 0);
+        Error::softHandle("PrintManagerParseError", "Detected invalid print properties: " + QString::number(bitmask, 2));
+
+        if (stnbd("gcodeParsingDebug", false)) { //Save uploaded file(s) for debug purposes
+            QDir dst(gsi.getDataDirPath() + "/debug");
+            QDir src(gsi.getDataDirPath() + "/uploaded");
+            if (dst.exists()) {
+                const QStringList files = src.entryList(QDir::Files | QDir::Hidden);
+                for (const QString &name : files) {
+                    const QString from = src.filePath(name);
+                    const QString to   = dst.filePath(name);
+                    QFile::copy(from, to);
+                }
+                Log::write("PrintManager", "Saved bugged GCode for review");
+            }
+        }
+    }
+    
+
     startLoadedPrint();
 }
 
@@ -167,4 +208,30 @@ void PrintManager::onJobReadyForPrep(quint32 id, const QString &filepath, const 
     loadedPrint.printInfo = printInfo; //set printinfo
     loadedPrint.printerId= id;
     ftm->setAppState(AppState::Prep); //change QML appstate to show print info
+}
+
+double PrintManager::parseInfill(const QString &infillString) {
+    QString p = QString(infillString);
+    if (p.endsWith('%')) p.chop(1);
+    bool parsed = false;
+    double res = p.trimmed().toDouble(&parsed);
+    return (parsed) ? res / 100.0 : 0.0;
+}
+double PrintManager::parseLayerHeight(const QString &layerString) {
+    QString p = QString(layerString);
+    if (p.endsWith("mm")) p.chop(2);
+    bool parsed = false;
+    double res = p.trimmed().toDouble(&parsed);
+    //Log::write("PrintManager", QString("Parsed: %1, Val: %2").arg(parsed).arg((parsed) ? res : 0.0));
+    return (parsed) ? res : 0.0;
+}
+
+double PrintManager::parseWeight(QMap<QString, QString> printProperties) {
+    QString weightString;
+    if (printProperties.contains("totalWeight")) weightString = printProperties.value("totalWeight");
+    else if (printProperties.contains("weight")) weightString = printProperties.value("weight");
+    if (weightString.endsWith('g')) weightString.chop(1);
+    bool parsed = false;
+    double res = weightString.trimmed().toDouble(&parsed);
+    return (parsed) ? res : 0.0;
 }

@@ -169,7 +169,8 @@ Item {
     }
 
     function loadPrintInfo(printInfo) {
-        let op = `Filename: ${truncateFilename(printInfo.filename)}\nPrinter: ${printInfo.printer}\nFilament: ${(printInfo.hasOwnProperty("filament")) ? printInfo.filament : printInfo.filamentType}\nWeight: ${(printInfo.weight.trim().endsWith("g")) ? printInfo.weight : printInfo.weight + "g"}\nDuration: ${printInfo.duration}`;
+        let op = `Filename: ${truncateFilename(printInfo.filename)}\nPrinter: ${printInfo.printer}\nFilament: ${(printInfo.hasOwnProperty("filament")) ? printInfo.filament : printInfo.filamentType}\nWeight: ${(printInfo.weight.trim().endsWith("g")) ? printInfo.weight : printInfo.weight + "g"}\nDuration: ${printInfo.duration}\nInfill Density: ${printInfo.infillDensity}`;
+        if (!printInfo.hasOwnProperty("printSettings") || !printInfo.printSettings.startsWith(Number(printInfo.layerHeight.replace(/mm$/, "")).toFixed(2) + "mm")) op += `\nLayer Height: ${printInfo.layerHeight}`
         if (printInfo.hasOwnProperty("printerName")) op += `\nPrinter Name: ${printInfo.printerName}`
         if (printInfo.hasOwnProperty("printSettings")) op += `\nPrint Settings: ${printInfo.printSettings}`
         if (printInfo.hasOwnProperty("personalFilament")) {

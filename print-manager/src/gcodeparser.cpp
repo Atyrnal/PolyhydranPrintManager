@@ -10,6 +10,9 @@
 #include <zip.h>
 
 
+//TODO: Make it read one line at a time, reading from the start and then end of file until it finds an uncommented line
+//That way, it should never miss any comments, and we avoid reading more than we have to.
+
 #define min(x, y) ((x<y) ? x : y)
 
 Eo<QMap<QString, QString>> GCodeParser::parseFile(QString filepath) {
@@ -165,6 +168,12 @@ QMap<QString, QString> GCodeParser::parseGCode(QVector<QString> lines) {
     output.insert("weight", weightstr.join(", "));
     output.insert("filamentCount", QString::number(filamentstr.length()));
     output.insert("totalWeight", QString::number(totalWeight)+"g");
+
+   
+
+    output.insert("infillDensity", properties[GCODE_TARGETS[7]]);
+    output.insert("layerHeight", properties[GCODE_TARGETS[8]] + "mm");
+
     return output;
 }
 
@@ -190,6 +199,11 @@ QMap<QString, QString> GCodeParser::parseBGCode(QVector<QString> lines) {
         {"weight", properties[BGCODE_TARGETS[0]]},
         {"duration", properties[BGCODE_TARGETS[3]]},
     };
+
+    output.insert("infillDensity", properties[BGCODE_TARGETS[4]]);
+    output.insert("layerHeight", properties[BGCODE_TARGETS[5]] + "mm");
+
+
     return output;
 }
 
