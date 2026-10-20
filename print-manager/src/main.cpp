@@ -61,6 +61,9 @@ int main(int argc, char *argv[])
 {
     QLoggingCategory::setFilterRules("qt.qpa.theme.gnome=false");
     QGuiApplication app(argc, argv); //Create a QT gui app
+    QIcon icon = QIcon("PolyhydranPrintManager/resources/StellatedPolyhedronWhite.png");
+    app.setWindowIcon(icon);
+    app.setDesktopFileName("com.polyhydran.PrintManager");
 
     QQmlApplicationEngine engine; //Qt engine creation
     QObject::connect( //Exit if object creation fails
@@ -108,7 +111,7 @@ int main(int argc, char *argv[])
 
 
     QQuickWindow* window = qobject_cast<QQuickWindow*>(root); //Cast to QWindow
-    QIcon icon = QIcon("PolyhydranPrintManager/resources/PC-Logo.ico");
+    
     window->setIcon(icon); //Set window icon
 
     return app.exec(); //run the app
