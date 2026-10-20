@@ -1,8 +1,19 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg SerialPort Sql HttpServer Mqtt DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Svg SerialPort Sql HttpServer Mqtt DBus Concurrent)
 find_package(CURL REQUIRED)
 find_package(libzip REQUIRED)
 find_package(KF6WindowSystem REQUIRED)
 find_package(ZLIB REQUIRED)
+
+include(FetchContent)
+FetchContent_Declare(libbgcode
+    GIT_REPOSITORY https://github.com/prusa3d/libbgcode.git
+    GIT_TAG main)   # pin a commit once it works
+
+set(LibBGCode_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+set(LibBGCode_BUILD_CMD_TOOL OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(libbgcode)
+
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -53,10 +64,12 @@ target_link_libraries(appPolyhydranPrintManager PRIVATE
     Qt6::HttpServer
     Qt6::Mqtt
     Qt6::DBus
+    Qt6::Concurrent
     CURL::libcurl
     libzip::zip
     KF6::WindowSystem
     ZLIB::ZLIB
+    LibBGCode::bgcode_convert
 )
 
 include(GNUInstallDirs)

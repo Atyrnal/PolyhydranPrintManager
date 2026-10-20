@@ -12,6 +12,8 @@
 #include <QNetworkReply>
 #include <QNetworkAccessManager>
 #include "printer.h"
+#include <memory>
+#include <QTemporaryDir>
 
 class Prusa : public Printer {
     Q_OBJECT
@@ -26,13 +28,17 @@ public:
 protected:
     QString apiKey;
     QString storageType;
+    bool useBinaryGCode = true;
     void testConnection();
 private:
     Printer::JobStatus jobStatus;
     QString jobState = "UNDEFINED";
     bool connectedOnce = false;
     void sendGCode(QString filepath);
+    QString convertToBgcode(const QString &src, const QString &dst);
+    void uploadFile(const QString &localPath, std::shared_ptr<QTemporaryDir> tmp = nullptr);
     qint8 connectFailCount = 0;
+    
     //bool testConnection();
 };
 

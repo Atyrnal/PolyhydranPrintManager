@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qml6-module-qtquick-templates qml6-module-qtquick-dialogs \
     qml6-module-qtqml-workerscript qml6-module-qtqml-models \
     qml6-module-qt-labs-folderlistmodel qml6-module-qtquick-shapes \
-    qml6-module-qtquick-effects \
+    qml6-module-qtquick-effects libheatshrink-dev libboost-dev\
  && rm -rf /var/lib/apt/lists/*
 
 # Qt MQTT isn't packaged by Debian. The tag must match Debian's Qt (6.8.2).
