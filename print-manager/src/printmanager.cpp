@@ -193,7 +193,7 @@ void PrintManager::onPrintStatusUpdated(const QString &printerName, const QStrin
         QDateTime recordCreated = QDateTime::fromString(recordFields.value("Date", "2026-01-01T00:00:00.000Z").toString(), Qt::ISODateWithMs);
         std::chrono::milliseconds diff = QDateTime::currentDateTimeUtc() - recordCreated;
         if (curstatus == "Ongoing" || curstatus == "Halted" || curstatus == "Unknown") {
-            if (status == "Failed" && diff <= std::chrono::milliseconds(300000)) //If print is stopped in the first 5 minutes
+            if (status == "Failed" && diff <= std::chrono::milliseconds(stni("abortTimeMaxSeconds")*1000)) //If print is stopped in the first 5 minutes
                 ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", "Aborted"}});
             else
             ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", status}});

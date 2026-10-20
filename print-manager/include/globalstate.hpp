@@ -98,6 +98,7 @@ private:
     //Storage
     QMap<QString, QVariant> settings;
     const QMap<QString, QVariant> defaultSettings {
+        {"abortTimeMaxSeconds", 420},
         {"allowPrinting", true},
         {"allowMakerspaceFilament", true},
         {"allowPersonalFilament", true},
