@@ -202,19 +202,20 @@ void PrintManager::onPrintStatusUpdated(const QString &printerName, const QStrin
 }
 
 double PrintManager::parseDuration(const QString &durationString) {
-    //Regex pattern to extract numbers from string
-    static QRegularExpression regex(R"((?:(\d+(?:\.\d+)?)h)?\s*(?:(\d+(?:\.\d+)?)m)?\s*(?:(\d+(?:\.\d+)?)s)?)");
+    static QRegularExpression regex(
+        R"(^\s*(?:(\d+(?:\.\d+)?)\s*d)?\s*(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+(?:\.\d+)?)\s*m)?\s*(?:(\d+(?:\.\d+)?)\s*s)?\s*$)");
     QRegularExpressionMatch match = regex.match(durationString);
 
-    if (!match.hasMatch()) return 999.99; //Max time if string is invalid so print doesnt go through
+    if (!match.hasMatch()) return 999.99;
+
     double totalHours = 0.0;
-    if (match.captured(1).length() > 0)  // hours
-        totalHours += match.captured(1).toDouble();
-    if (match.captured(2).length() > 0)  // minutes
-        totalHours += match.captured(2).toDouble() / 60.0;
-    if (match.captured(3).length() > 0)  // seconds
-        totalHours += match.captured(3).toDouble() / 3600.0;
-    return totalHours;
+    bool any = false;
+    if (!match.captured(1).isEmpty()) { totalHours += match.captured(1).toDouble() * 24.0; any = true; } // days
+    if (!match.captured(2).isEmpty()) { totalHours += match.captured(2).toDouble();        any = true; } // hours
+    if (!match.captured(3).isEmpty()) { totalHours += match.captured(3).toDouble() / 60.0; any = true; } // minutes
+    if (!match.captured(4).isEmpty()) { totalHours += match.captured(4).toDouble() / 3600.0; any = true; } // seconds
+
+    return any ? totalHours : 999.99; // empty or unrecognized string → reject
 }
 
 void PrintManager::onJobReadyForPrep(quint32 id, const QString &filepath, const QMap<QString, QString> &printInfo) {
