@@ -31,7 +31,6 @@ bool UserManager::checkStaffCache(QString cardid) const {
 };
 
 
-
 void UserManager::lookupUser(const QString &cardid, std::function<void(UserLookup, const QVariantMap &user)> done) {
     if (staffCache.contains(cardid)) {
         return done(UserLookup::Staff, {});
@@ -46,7 +45,10 @@ void UserManager::lookupUser(const QString &cardid, std::function<void(UserLooku
             return done(UserLookup::Error, {});
         }
         QVariantMap user = eo.get().value("fields").toMap();
-        bool isStaff = user.value("Is Staff", false).toBool();
+        QVariantList groups = user.value(stns("groupTableName")).toList();
+        QStringList strings = QVariant(groups).toStringList();
+        QSet<QString> set(strings.begin(), strings.end());
+        bool isStaff = set.intersects(staffGroups);
         if (isStaff) setCurrentStaff(cardid);
         done(isStaff ? UserLookup::Staff : UserLookup::NotStaff, user);
     });
@@ -217,6 +219,8 @@ void UserManager::loadGroupOverrides() {
                 overrides.insert(key, val);
             }
 
+            if (overrides.contains("user.staff") && overrides.value("user.staff").toBool()) staffGroups.insert(recid);
+
             groupOverrides.insert(recid, overrides);
         }
         Log::write("UserManager", QString("Loaded %1 groups").arg(groupOverrides.size()));
@@ -304,6 +308,7 @@ QMap<QString, QVariant> UserManager::getUserOverrides(QVariantMap user) const {
 
 QVariant UserManager::getUserSetting(QString name, QVariantMap overrides, QVariant def) {
     if (overrides.contains(name)) return overrides.value(name);
+    else if (name.startsWith("user.")) return gsi.getPermission(name, def);
     else return gsi.getSetting(name, def);
 }
 

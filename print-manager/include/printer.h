@@ -16,7 +16,8 @@ public:
     enum JobStatus {
         Idle,
         Busy=100,
-        Error=200
+        Error=200,
+        Unreachable=300
     };
 
     Printer(QObject* parent = 0);

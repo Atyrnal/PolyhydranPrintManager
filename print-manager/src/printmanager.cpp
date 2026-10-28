@@ -2,6 +2,8 @@
 #include "frontendmanager.h"
 #include "globalstate.hpp"
 #include <QObject>
+#include <QTimer>
+#include "printer.h"
 
 #define gusb(name) usm->getUserSetting((name), overrides).toBool()
 #define guss(name) usm->getUserSetting((name), overrides).toString()
@@ -60,7 +62,12 @@ void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, boo
         // if (stnbd("requireFilamentTypeCount", false)) loadedPrint.issues.insert("filamentTypeCount", filamentTypeCount);
         // loadedPrint.issues.insert("personalFilament", loadedPrint.isPersonalFilament);
 
-        if (!gusb("allowPrinting")) {
+        if(!gusb("allowPrinting")) {
+            loadedPrint.issues.insert("Printing Disabled");
+            lm("Please get staff approval to print.");
+        }
+
+        if (!gusb("user.allowPrinting")) {
             loadedPrint.issues.insert("Not allowed to print");
             lm("You are not allowed to print\nat the Physical Computing Makerspace.");
         }
@@ -71,7 +78,7 @@ void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, boo
         }
         
         if (!loadedPrint.isPersonalFilament) {
-            if (!gusb("allowMakerspaceFilament")) {
+            if (!gusb("user.allowMakerspaceFilament")) {
                 loadedPrint.issues.insert("Non-CICS printing with makerspace filament");
                 lmb("Only CICS Community Members\nmay print using Makerspace filament.","I Understand")
             }
@@ -81,7 +88,7 @@ void PrintManager::printStartCheck(bool staffApproved, qint16 printersUsing, boo
             }
 
         } else {
-            if (!gusb("allowPersonalFilament")) {
+            if (!gusb("user.allowPersonalFilament")) {
                 loadedPrint.issues.insert("Non-CICS printing");
                 lmb("Only CICS Community Members\ncan print at the\nPhysical Computing Makerspace", "I Understand")
             }
@@ -166,19 +173,26 @@ void PrintManager::startLoadedPrint() {
         {"Status", "Ongoing"},
         {"Multicolor", countFilaments(loadedPrint.printInfo) > 1}
     };
+    quint16 printerId = loadedPrint.printerId;
     if (loadedPrint.staffApproved && usm->getCurrentUserId() != usm->getCurrentStaffId()) printLogInfo.insert("Staff Approver ID", usm->getCurrentStaffId());
     Log::write("PrintManager", QString("Starting Print on Printer %1").arg(prm->getPrinter(loadedPrint.printerId)->getName()));
-    QObject::connect(prm, &PrinterManager::printStartResult, this, [this, printLogInfo](bool success){
+    QObject::connect(prm, &PrinterManager::printStartResult, this, [this, printLogInfo, printerId](bool success){
         if (success) {
             Log::write("PrintManager", "Print start succeeded.");
             ait->table("Print Log")->createRecord(printLogInfo);
             ftm->showMessage("Printing now!");
+            QTimer::singleShot(stni("printStartTimeoutSeconds")*1000, this, [this, printerId](){
+                Printer* prt = prm->getPrinter(printerId);
+                if (prt == nullptr) return Error("PrintManagerError", "Loaded Printer not found after timeout").handle();
+                Printer::JobStatus j = prt->getJobStatus();
+                if (j == Printer::JobStatus::Idle || j == Printer::JobStatus::Error) onPrintStatusUpdated(prt->getName(), "Aborted");
+            });
         } else {
             Log::write("PrintManager", "Print start failed.");
             ftm->showMessage("Failed to start print.\nPlease try another printer.", "OK");
         }
     }, Qt::SingleShotConnection);
-    prm->startPrinting(loadedPrint.printerId, loadedPrint.filepath);
+    prm->startPrinting(printerId, loadedPrint.filepath);
 }
 
 void PrintManager::onPrintStatusUpdated(const QString &printerName, const QString &status) const {

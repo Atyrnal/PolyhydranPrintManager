@@ -54,8 +54,24 @@ QVariant GlobalState::getSetting(QString sname, QVariant def) const {
     }
 }
 
+QVariant GlobalState::getPermission(QString sname, QVariant def) const {
+    QString pname = sname;
+    if (pname.startsWith("user.")) pname = pname.sliced(5);
+    if (baseUserPermissions.contains(pname)) return baseUserPermissions.value(pname);
+    else if (!def.isNull() && def.isValid()) return def;
+    else if (defaultUserPermissions.contains(pname)) return defaultUserPermissions.value(pname);
+    else {
+        Error::handle("ConfigError", "Invalid permission name: " + sname, El::Warning);
+        return def;
+    } 
+}
+
 void GlobalState::loadSettings(QMap<QString, QVariant> setc) {
     settings = QMap(setc);
+}
+
+void GlobalState::loadPermissions(QMap<QString, QVariant> permc) {
+    baseUserPermissions = QMap(permc);
 }
 
 QString GlobalState::getDataDirPath() const {
@@ -128,16 +144,13 @@ void GlobalState::loadConfig(QJsonObject cfg) {
     //Load settings
     if (config.contains("settings") && config.value("settings").isObject()) {
         QJsonObject settingsc = config.value("settings").toObject();
-        QMap<QString, QVariant> settings;
-        for (auto it = settingsc.constBegin(); it != settingsc.constEnd(); ++it) {
-            QString key = it.key();
-            QVariant val = it.value().toVariant();
-            settings.insert(key, val);
-            CheckLevel cll = (it.value().isBool()) ? (val.toBool()) ? Cl::OK : Cl::FAIL : Cl::WARN;
-            if (val.canConvert<QString>()) Check::write("Setting " + it.key() + " value", val.toString().toUpper(), cll);
-            else Check::write("Setting " + it.key(), "FOUND", cll);
-        }
-        loadSettings(settings);
+        loadSettings(parseJsonSettings(settingsc));
+    }
+
+    //Load user permissions
+    if (config.contains("permissions") && config.value("permissions").isObject()) {
+        QJsonObject permissionsc = config.value("permissions").toObject();
+        loadPermissions(parseJsonSettings(permissionsc));
     }
 
     userman->loadGroupOverrides();
@@ -157,4 +170,18 @@ void GlobalState::loadConfig(QJsonObject cfg) {
     // QTimer::singleShot(6000, this, [this](){
     //     frontman->setUploadProgress("test.gcode", 5011340, 4567000);
     // });
+}
+
+QMap<QString, QVariant> GlobalState::parseJsonSettings(QJsonObject s) const {
+    QMap<QString, QVariant> settings;
+    for (auto it = s.constBegin(); it != s.constEnd(); ++it) {
+        QString key = it.key();
+        if (key.startsWith("user.")) key = key.sliced(5);
+        QVariant val = it.value().toVariant();
+        settings.insert(key, val);
+        CheckLevel cll = (it.value().isBool()) ? (val.toBool()) ? Cl::OK : Cl::FAIL : Cl::WARN;
+        if (val.canConvert<QString>()) Check::write("Setting " + it.key() + " value", val.toString().toUpper(), cll);
+        else Check::write("Setting " + it.key(), "FOUND", cll);
+    }
+    return settings;
 }

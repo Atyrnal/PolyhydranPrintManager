@@ -50,6 +50,7 @@ private:
     QMap<QString, QMap<QString, QVariant>> groupOverrides;
     QString trainingCertificateId;
     QList<QPair<CustomGroupCriteria, QMap<QString, QVariant>>> customGroupOverrides;
+    QSet<QString> staffGroups;
 };
 
 

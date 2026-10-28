@@ -35,7 +35,7 @@ BambuLab::BambuLab(QString name, QString model, QString hostname, QString access
 }
 
 Printer::JobStatus BambuLab::getJobStatus() {
-    if (latestReport.isEmpty() || !connectionStatus) return Printer::JobStatus::Error;
+    if (latestReport.isEmpty() || !connectionStatus) return Printer::JobStatus::Unreachable;
     return this->jobStatus;
 }
 

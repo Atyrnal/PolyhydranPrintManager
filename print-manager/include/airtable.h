@@ -18,15 +18,15 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 
-struct User {
-    QString id;
-    QString firstname;
-    QString lastname;
-    QString email;
-    bool isUmass = 0;
-    bool isCics = 0;
-    bool isTrained = 0;
-};
+// struct User {
+//     QString id;
+//     QString firstname;
+//     QString lastname;
+//     QString email;
+//     bool isUmass = 0;
+//     bool isCics = 0;
+//     bool isTrained = 0;
+// };
 
 enum SortDir {
     ASC = 0,

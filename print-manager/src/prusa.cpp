@@ -56,7 +56,7 @@ void Prusa::startPrint(const QString &fileName) {
 
 Printer::JobStatus Prusa::getJobStatus() {
 
-    if (!connectionStatus) return Printer::JobStatus::Error;
+    if (!connectionStatus) return Printer::JobStatus::Unreachable;
     return this->jobStatus;
 }
 
@@ -126,6 +126,7 @@ void Prusa::testConnection() {
                 Error::handle("PrusaPrinterConnectionTestError", "Unable to connect to printer " + name, El::Warning);
             }
             this->connectionStatus = false;
+            this->jobStatus = Printer::JobStatus::Unreachable;
             return;
         }
         connectFailCount = 0;

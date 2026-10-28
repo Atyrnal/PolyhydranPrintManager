@@ -57,7 +57,10 @@ public:
     GlobalState& operator=(GlobalState&&) = delete;
 
     QVariant getSetting(QString sname, QVariant def = QVariant()) const;
+    QVariant getPermission(QString sname, QVariant def = QVariant()) const;
+    QMap<QString, QVariant> parseJsonSettings(QJsonObject s) const;
     void loadSettings(QMap<QString, QVariant> setc);
+    void loadPermissions(QMap<QString, QVariant> permc);
 
     QString getAppVersion() const;
     QString getDataDirPath() const;
@@ -97,11 +100,12 @@ private:
 
     //Storage
     QMap<QString, QVariant> settings;
+    QMap<QString, QVariant> baseUserPermissions;
     const QMap<QString, QVariant> defaultSettings {
         {"abortTimeMaxSeconds", 420},
         {"allowPrinting", true},
-        {"allowMakerspaceFilament", true},
-        {"allowPersonalFilament", true},
+        // {"allowMakerspaceFilament", true},
+        // {"allowPersonalFilament", true},
         {"bypassCardId", ""},
         {"darkMode", false},
         {"enableGroups", false},
@@ -123,6 +127,7 @@ private:
         {"orcaSlicerExec", "/opt/orca-slicer/AppRun"},
         {"printingCertificateName", "3D Printing"},
         {"printingCertificateTableName", "Certificates"},
+        {"printStartTimeoutSeconds", 240},
         {"prusaConnectionFailThreshold", 2},
         {"requireFilamentTypeCount", true},
         {"requireInfillDensity", true},
@@ -133,6 +138,13 @@ private:
         {"requireTraining", true},
         {"rfidReaderPortName", "auto"},
         {"updatePrintStatuses", true}
+    };
+    const QMap<QString,QVariant> defaultUserPermissions {
+        {"allowPrinting", true},
+        {"allowMakerspaceFilament", true},
+        {"allowPersonalFilament", true},
+        {"staff", false}
+
     };
     QString dataDirPath;
     QString appDirPath;
