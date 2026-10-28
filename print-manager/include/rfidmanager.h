@@ -17,6 +17,7 @@ private:
     LTx2A* rfidReader = nullptr;
     bool connected = false;
     bool connectedOnce = false;
+    bool reconnectPending = false;
 };
 
 

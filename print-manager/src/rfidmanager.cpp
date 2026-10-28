@@ -16,19 +16,23 @@ void RfidManager::startRfid() {
         }
     });
     QObject::connect(rfidReader, &LTx2A::errorOccured, this, [this](const QString &error) {
-        if (!connectedOnce) {
-            Check::write("Connect to RFID Scanner serial", Cl::FAIL);
-            connectedOnce = true;
-            Error::handle("SerialError", error, El::Critical); //Print error
-        } else if (connected) {
-            Error::handle("SerialError", error, El::Critical); //Print error
-            connected = false;
-        }
-        rfidReader->stop();
-        QTimer::singleShot(10000, this, [this](){ //Attempt reconnect
-            rfidReader->restart();
-        });
+    if (!connectedOnce) {
+        Check::write("Connect to RFID Scanner serial", Cl::FAIL);
+        connectedOnce = true;
+        Error::handle("SerialError", error, El::Critical);
+    } else if (connected) {
+        Error::handle("SerialError", error, El::Critical);
+    }
+    connected = false;
+
+    if (reconnectPending) return;
+    reconnectPending = true;
+    rfidReader->stop();
+    QTimer::singleShot(10000, this, [this]() {
+        reconnectPending = false;
+        rfidReader->restart(stns("rfidReaderPortName"));
     });
+});
     QObject::connect(rfidReader, &LTx2A::serialOpened, this, [this]() {
         if (!connectedOnce) Check::write("Connect to RFID Scanner serial", Cl::OK);
         connectedOnce = true;

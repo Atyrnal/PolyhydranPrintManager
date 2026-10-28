@@ -26,6 +26,7 @@ private slots:
     void handleReadyRead();
 private:
     QSerialPort* serial = nullptr;
+    bool opened = false;
     QByteArray rxBuffer;
     QString portName;
     qint32 baud;

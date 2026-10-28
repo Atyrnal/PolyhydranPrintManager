@@ -30,22 +30,20 @@ void LTx2A::start() {
 
 void LTx2A::stop() { //Stop and remove threads
     if (!worker) return;
-    if (worker != nullptr) worker->stop();
-    if (thread != nullptr) {
-        thread->quit();
-        thread->wait();
-        disconnect(thread);
-    }
-    if (worker != nullptr) disconnect(worker);
-    if (worker != nullptr) delete worker;
-    if (thread != nullptr) delete thread;
+    QMetaObject::invokeMethod(worker, &SerialWorker::stop, Qt::BlockingQueuedConnection);
+    worker->disconnect(this);
+    thread->quit();
+    thread->wait();
+    delete worker;
+    delete thread;
     worker = nullptr;
     thread = nullptr;
 }
 
 void LTx2A::restart(QString portName, qint32 baud) {
-    thread = new QThread; //New thread
-    worker = new SerialWorker(portName, baud); //New SerialWorker
+    stop();
+    thread = new QThread;
+    worker = new SerialWorker(portName, baud);
     start();
 }
 
@@ -97,18 +95,17 @@ void SerialWorker::start() {
     serial->setFlowControl(QSerialPort::NoFlowControl);
 
     connect(serial, &QSerialPort::readyRead, this, &SerialWorker::handleReadyRead); //Handle reading
-    connect(serial, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError err) { //Handle errors from serial port
-        if (err != QSerialPort::NoError) {
-            //Check::write("Connect to RFID Scanner serial", Cl::FAIL);
-            emit errorOccurred(serial->errorString()); //Send error event
-        }
+    connect(serial, &QSerialPort::errorOccurred, this, [this](QSerialPort::SerialPortError err) {
+        if (err == QSerialPort::NoError || !opened) return;   // ignore errors from open(); handled below
+        opened = false;
+        emit errorOccurred(serial->errorString());
     });
 
-    if (!serial->open(QIODevice::ReadOnly)) { //Open serial connection as read only
-        //Check::write("Connect to RFID Scanner serial", Cl::FAIL);
-        emit errorOccurred(serial->errorString()); //Handle error opening connection
+    if (!serial->open(QIODevice::ReadOnly)) {
+        emit errorOccurred(serial->errorString());
+        return;
     }
-    //Check::write("Connect to RFID Scanner serial", Cl::OK);
+    opened = true;   // add: bool opened = false; to SerialWorker
     emit serialOpened();
 }
 
