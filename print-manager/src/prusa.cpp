@@ -144,7 +144,7 @@ void Prusa::testConnection() {
             QJsonDocument response = QJsonDocument::fromJson(testReply->readAll(), &p);
             if (p.error) {
                 Error::handle("JsonParseError", "Unable to parse job response JSON", El::Warning);
-                this->jobStatus = Printer::JobStatus::Error;
+                this->jobStatus = Printer::JobStatus::Unreachable;
                 return;
             }
             QString prev = jobState;
@@ -171,7 +171,7 @@ void Prusa::testConnection() {
                 }
             }
 
-        } else this->jobStatus = Printer::JobStatus::Error;
+        } else this->jobStatus = Printer::JobStatus::Unreachable;
         return;
     });
     // QTimer::singleShot(5000, this, [this, testReply](){
