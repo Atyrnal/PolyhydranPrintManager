@@ -3,6 +3,7 @@
 #include "globalstate.hpp"
 #include <QObject>
 #include <QTimer>
+#include <qnamespace.h>
 #include "printer.h"
 
 #define gusb(name) usm->getUserSetting((name), overrides).toBool()
@@ -206,11 +207,15 @@ void PrintManager::onPrintStatusUpdated(const QString &printerName, const QStrin
         QString curstatus = recordFields.value("Status", "Unknown").toString();
         QDateTime recordCreated = QDateTime::fromString(recordFields.value("Date", "2026-01-01T00:00:00.000Z").toString(), Qt::ISODateWithMs);
         std::chrono::milliseconds diff = QDateTime::currentDateTimeUtc() - recordCreated;
-        if (curstatus == "Ongoing" || curstatus == "Halted" || curstatus == "Unknown") {
+        if (curstatus == "Ongoing" || ( curstatus == "Halted" && status != "Aborted" )|| ( curstatus == "Unknown" && status != "Aborted" )) {
+            QString endTime = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
             if (status == "Failed" && diff <= std::chrono::milliseconds(stni("abortTimeMaxSeconds")*1000)) //If print is stopped in the first 5 minutes
-                ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", "Aborted"}});
-            else
-            ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", status}});
+                ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), {{"Status", "Aborted"},{"Ended At", endTime}});
+            else {
+                QVariantMap fields{{"Status", status}};
+                if (status != "Ongoing" && status != "Halted") fields.insert("Ended At", endTime);
+                ait->table("Print Log")->updateRecordById(recordeo.get().value("id").toString(), fields);
+            }
         }
     });
 }
