@@ -34,6 +34,12 @@ OctoprintEmulator::OctoprintEmulator(quint16 port, QObject* parent) : QObject(pa
             {"safemode", "incomplete_startup"}
         };
     });*/
+    server.route("/", [](){
+        return R"(<!DOCTYPE html>
+<html><body style='background-color: #2d2d30'><h1 style='color: #ffffff'>Continue to Polyhydran Print Manager</h1>
+<h2 style='color: #ffffff'>Select the "Prepare" tab to return to the slicer</h2>
+</body></html>)";
+    });
 
     server.route("/api/version", []() { //Hey OctoPrint is over here!!! //emulate octoprint version api endpoint
         //qDebug() << "/api/version called!";
