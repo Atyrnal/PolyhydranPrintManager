@@ -45,7 +45,7 @@ void PrinterManager::loadConfig(QJsonObject config){
                 printer.value("model").toString("Unknown"),
                 printer.value("hostname").toString(),
                 printer.value("apiKey").toString(),
-                printer.value("storageType").toString("usb")
+                printer.value("storageType").toString("auto")
             );
             addPrinter(prs);
         } else if (brand == "bambulab") {

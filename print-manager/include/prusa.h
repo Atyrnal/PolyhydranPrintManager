@@ -17,7 +17,7 @@ class Prusa : public Printer {
     Q_OBJECT
 public:
     Prusa(QObject* parent = 0);
-    Prusa(QString name, QString model, QString hostname, QString apiKey, QString storageType = "usb", QObject* parent = 0);
+    Prusa(QString name, QString model, QString hostname, QString apiKey, QString storageType = "auto", QObject* parent = 0);
     void startPrint(const QString &gcodeFilepath) override;
     void setStorageType(QString storageType);
     void setHostname(QString hostname);

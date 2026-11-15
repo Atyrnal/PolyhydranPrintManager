@@ -27,7 +27,12 @@ Prusa::Prusa(QObject* parent) : Printer(parent) {
 Prusa::Prusa(QString name, QString model, QString hostname, QString apiKey, QString storageType, QObject* parent) : Printer(name, model, "Prusa", parent) {
     this->hostname = hostname;
     this->apiKey = apiKey;
-    this->storageType = storageType;
+    if (storageType == "auto") {
+        if (model.toLower().startsWith("mk3") || model.toLower().startsWith("i3")) this->storageType = "local";
+        else this->storageType = "usb";
+    } else {
+        this->storageType = storageType;
+    }
     testConnection();
     QTimer *timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [this, timer](){
@@ -76,12 +81,13 @@ void Prusa::sendGCode(QString filepath) {
     //upload the file to the printer via its API
     QUrl uploadUrl(QString("http://%1/api/v1/files/%2/%3").arg(hostname, storageType, fileInfo.fileName()));
     QNetworkRequest uploadReq(uploadUrl);
-    uploadReq.setHeader(QNetworkRequest::ContentTypeHeader, "application/octet-stream");
+    uploadReq.setHeader(QNetworkRequest::ContentTypeHeader, (file.fileName().endsWith(".bgcode")) ? "application/octet-stream" : "text/x.gcode");
     uploadReq.setHeader(QNetworkRequest::ContentLengthHeader, QByteArray::number(fileData.size()));
     uploadReq.setRawHeader("X-Api-Key", apiKey.toUtf8());
     uploadReq.setRawHeader("Print-After-Upload", "?1"); //Ensure the print starts imidately
     uploadReq.setRawHeader("Overwrite", "?1");
 
+    //Log::write("PrusaPrinter", "Storagetype: " + storageType + " contenttype: " + ((file.fileName().endsWith(".bgcode")) ? "application/octet-stream" : "text/x.gcode"));
 
     QNetworkReply *uploadReply = manager.put(uploadReq, fileData);
 
